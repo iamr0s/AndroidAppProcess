@@ -7,7 +7,7 @@ plugins {
 ext {
     groupId = "io.github.iamr0s"
     artifactId = "AndroidAppProcess"
-    artifactVersion = "1.0"
+    artifactVersion = "1.1"
     POM_NAME = "Android app_process"
     POM_DESCRIPTION = "Run Android app_process just like Android Service."
     POM_URL = "https://github.com/iamr0s/AndroidAppProcess"
