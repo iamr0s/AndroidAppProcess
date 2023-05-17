@@ -15,6 +15,8 @@ import android.os.IInterface;
 import android.os.Looper;
 import android.os.Process;
 
+import androidx.annotation.Keep;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
@@ -32,11 +34,13 @@ import java.util.List;
 import java.util.Objects;
 
 public class NewProcess {
-    public static void main(String[] args) {
+    @Keep
+    public static void main(String[] args) throws Throwable {
         try {
             innerMain(args);
         } catch (Throwable e) {
             e.printStackTrace();
+            throw e;
         }
     }
 

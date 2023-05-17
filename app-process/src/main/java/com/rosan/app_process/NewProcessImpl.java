@@ -5,12 +5,19 @@ import android.os.IBinder;
 import android.os.Parcel;
 import android.os.RemoteException;
 
+import androidx.annotation.Keep;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
 public class NewProcessImpl extends INewProcess.Stub {
+    @Keep
+    public NewProcessImpl() {
+        super();
+    }
+
     @Override
     public void exit(int code) {
         System.exit(code);
