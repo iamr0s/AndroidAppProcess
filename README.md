@@ -9,7 +9,7 @@ Encapsulation of Android app_process, you can use it just like Android Service.
 ### Import library
 
 ```gradle
-implementation 'io.github.iamr0s:AndroidAppProcess:1.0'
+implementation 'io.github.iamr0s:AndroidAppProcess:<version>'
 ```
 
 ### 1. New Process
@@ -42,7 +42,7 @@ IPackageManager managerWrapper = IPackageManager.Stub.asInterface(binderWrapper)
 managerWrapper.uninstall(...) // will call it in root.
 ```
 
-### - More
+- More
 
 > See the demo.
 
