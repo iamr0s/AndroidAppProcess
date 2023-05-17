@@ -21,6 +21,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 
 abstract class NewProcessReceiver extends BroadcastReceiver {
     public static @NonNull INewProcess start(AppProcess appProcess, ComponentName componentName) {
@@ -28,25 +29,36 @@ abstract class NewProcessReceiver extends BroadcastReceiver {
         String token = UUID.randomUUID().toString();
         IntentFilter filter = new IntentFilter();
         filter.addAction(ACTION_SEND_NEW_PROCESS);
-        LinkedBlockingQueue<NewProcessResult> queue = new LinkedBlockingQueue<>();
+        LinkedBlockingQueue<AtomicReference<NewProcessResult>> queue = new LinkedBlockingQueue<>();
         BroadcastReceiver receiver = new NewProcessReceiver() {
             @Override
             void onReceive(NewProcessResult result) {
                 if (!result.getToken().equals(token)) return;
-                queue.offer(result);
+                queue.offer(new AtomicReference<>(result));
             }
         };
         context.registerReceiver(receiver, filter);
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
-        Future<NewProcessResult> future = executorService.submit(queue::take);
+        ExecutorService executorService = Executors.newCachedThreadPool();
+        Future<AtomicReference<NewProcessResult>> future = executorService.submit(queue::take);
         try {
-            appProcess.start(context.getPackageCodePath(), NewProcess.class, new String[]{
-                    String.format("--package=%s", context.getPackageName()),
-                    String.format("--token=%s", token),
-                    String.format("--component=%s", componentName.flattenToString())
+            AtomicReference<Process> process = new AtomicReference<>(null);
+            executorService.execute(() -> {
+                try {
+                    process.set(appProcess.start(context.getPackageCodePath(), NewProcess.class, new String[]{
+                            String.format("--package=%s", context.getPackageName()),
+                            String.format("--token=%s", token),
+                            String.format("--component=%s", componentName.flattenToString())
+                    }));
+                    process.get().waitFor();
+                } catch (InterruptedException | IOException ignored) {
+                } finally {
+                    if (process.get() != null) process.get().destroy();
+                }
+                queue.offer(new AtomicReference<>(null));
             });
-            return future.get(15, TimeUnit.SECONDS).getNewProcess();
-        } catch (IOException | ExecutionException | InterruptedException | TimeoutException e) {
+            NewProcessResult result = future.get(15, TimeUnit.SECONDS).get();
+            return result != null ? result.getNewProcess() : null;
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
             e.printStackTrace();
             return null;
         } finally {

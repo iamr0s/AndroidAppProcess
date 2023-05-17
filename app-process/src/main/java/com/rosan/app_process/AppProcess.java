@@ -142,8 +142,7 @@ public abstract class AppProcess implements Closeable {
     public void stopProcess(@NonNull ComponentName componentName) {
         String token = componentName.flattenToString();
         INewProcess newProcess = mChildProcess.get(token);
-        if (newProcess == null
-                || !newProcess.asBinder().isBinderAlive()) return;
+        if (newProcess == null || !newProcess.asBinder().isBinderAlive()) return;
         try {
             newProcess.exit(0);
         } catch (RemoteException e) {

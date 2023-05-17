@@ -35,7 +35,7 @@ public class NewProcess {
     public static void main(String[] args) {
         try {
             innerMain(args);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             e.printStackTrace();
         }
     }
@@ -51,8 +51,12 @@ public class NewProcess {
         String component = cmdLine.getOptionValue("component");
         ComponentName componentName = ComponentName.unflattenFromString(component);
 
-        ActivityThread activityThread = getActivityThread();
-        Context context = getDefaultContext(activityThread);
+        if (Looper.getMainLooper() == null) {
+            Looper.prepareMainLooper();
+        }
+
+        ActivityThread activityThread = ActivityThread.systemMain();
+        Context context = activityThread.getSystemContext();
         Context uidContext = createUIDContext(context, activityThread);
 
         Bundle bundle = new Bundle();
@@ -93,21 +97,6 @@ public class NewProcess {
             throw new RuntimeException(e);
         }
         return ((IInterface) result).asBinder();
-    }
-
-    public static ActivityThread getActivityThread() {
-        if (Looper.getMainLooper() == null) {
-            Looper.prepareMainLooper();
-        }
-        ActivityThread activityThread = ActivityThread.currentActivityThread();
-        if (activityThread == null) activityThread = ActivityThread.systemMain();
-        return activityThread;
-    }
-
-    public static Context getDefaultContext(ActivityThread activityThread) {
-        Context context = activityThread.getApplication();
-        if (context == null) context = activityThread.getSystemContext();
-        return context;
     }
 
     public static List<String> getPackagesForUid(Context context, int uid) {
