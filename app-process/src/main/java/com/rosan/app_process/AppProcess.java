@@ -8,6 +8,7 @@ import android.os.RemoteException;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -16,7 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public abstract class AppProcess {
+public abstract class AppProcess implements Closeable {
     private INewProcess mNewProcess = null;
 
     private final Map<String, INewProcess> mChildProcess = new HashMap<>();
@@ -65,6 +66,16 @@ public abstract class AppProcess {
 
     public boolean initialized() {
         return mNewProcess != null && mNewProcess.asBinder().isBinderAlive();
+    }
+
+    @Override
+    public void close() throws IOException {
+        if (mNewProcess == null || !mNewProcess.asBinder().pingBinder()) return;
+        try {
+            mNewProcess.exit(0);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
     }
 
     protected abstract @NonNull Process newProcess(@NonNull ProcessParams params) throws IOException;
