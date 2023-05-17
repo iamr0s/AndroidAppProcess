@@ -1,0 +1,25 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+plugins {
+    id 'com.android.application' version '8.0.1' apply false
+    id 'com.android.library' version '8.0.1' apply false
+}
+
+ext {
+    groupId = "io.github.iamr0s"
+    artifactId = "AndroidAppProcess"
+    artifactVersion = "1.0"
+    POM_NAME = "Android app_process"
+    POM_DESCRIPTION = "Run Android app_process just like Android Service."
+    POM_URL = "https://github.com/iamr0s/AndroidAppProcess"
+    POM_SCM_URL = "https://github.com/iamr0s/AndroidAppProcess"
+    POM_SCM_CONNECTION = "scm:git@github.com:iamr0s/AndroidAppProcess.git"
+    POM_SCM_DEV_CONNECTION = "scm:git@github.com:iamr0s/AndroidAppProcess.git"
+
+    POM_LICENCE_NAME = "LGPL v3.0 License"
+    POM_LICENCE_URL = "https://github.com/iamr0s/AndroidAppProcess/blob/main/LICENSE"
+    POM_LICENCE_DIST = "repo"
+
+    POM_DEVELOPER_ID = "iamr0s"
+    POM_DEVELOPER_NAME = "iamr0s"
+    POM_DEVELOPER_URL = "https://github.com/iamr0s"
+}
