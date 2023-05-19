@@ -11,6 +11,7 @@ import androidx.annotation.Nullable;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -166,32 +167,46 @@ public abstract class AppProcess implements Closeable {
         }
     }
 
-    public static class Root extends Default {
+    public abstract static class Terminal extends Default {
+        protected abstract @NonNull List<String> newTerminal();
+
         @NonNull
         @Override
         protected Process newProcess(@NonNull ProcessParams params) throws IOException {
-            ProcessParams newParams = new ProcessParams(params);
-            List<String> newCmdList = new ArrayList<>();
-            newCmdList.add("su");
-            newCmdList.add("-c");
-            newCmdList.addAll(newParams.getCmdList());
-            newParams.setCmdList(newCmdList);
-            return super.newProcess(newParams);
+            ProcessParams newParams = new ProcessParams(params).setCmdList(newTerminal());
+            Process process = super.newProcess(newParams);
+            PrintWriter printWriter = new PrintWriter(process.getOutputStream(), true);
+            int count = 0;
+            StringBuilder buffer = new StringBuilder();
+            for (String element : params.getCmdList()) {
+                if (++count > 1) buffer.append(" ");
+                buffer.append(element);
+            }
+            printWriter.println(buffer);
+            printWriter.println("exit $?");
+            return process;
         }
     }
 
-    public static class RootSystem extends Default {
+    public static class Root extends Terminal {
+
         @NonNull
         @Override
-        protected Process newProcess(@NonNull ProcessParams params) throws IOException {
-            ProcessParams newParams = new ProcessParams(params);
-            List<String> newCmdList = new ArrayList<>();
-            newCmdList.add("su");
-            newCmdList.add("1000");
-            newCmdList.add("-c");
-            newCmdList.addAll(newParams.getCmdList());
-            newParams.setCmdList(newCmdList);
-            return super.newProcess(newParams);
+        protected List<String> newTerminal() {
+            List<String> terminal = new ArrayList<>();
+            terminal.add("su");
+            return terminal;
+        }
+    }
+
+    public static class RootSystem extends Terminal {
+        @NonNull
+        @Override
+        protected List<String> newTerminal() {
+            List<String> terminal = new ArrayList<>();
+            terminal.add("su");
+            terminal.add("1000");
+            return terminal;
         }
     }
 
@@ -230,16 +245,19 @@ public abstract class AppProcess implements Closeable {
             return mDirectory;
         }
 
-        public void setCmdList(@NonNull List<String> mCmdList) {
+        public ProcessParams setCmdList(@NonNull List<String> mCmdList) {
             this.mCmdList = mCmdList;
+            return this;
         }
 
-        public void setEnv(@Nullable Map<String, String> mEnv) {
+        public ProcessParams setEnv(@Nullable Map<String, String> mEnv) {
             this.mEnv = mEnv;
+            return this;
         }
 
-        public void setDirectory(@Nullable String mDirectory) {
+        public ProcessParams setDirectory(@Nullable String mDirectory) {
             this.mDirectory = mDirectory;
+            return this;
         }
     }
 }
