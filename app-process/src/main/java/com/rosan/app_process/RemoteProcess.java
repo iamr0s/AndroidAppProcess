@@ -43,7 +43,7 @@ public class RemoteProcess extends Process {
     }
 
     @Override
-    public int waitFor() throws InterruptedException {
+    public int waitFor() {
         try {
             return mProcess.waitFor();
         } catch (RemoteException e) {

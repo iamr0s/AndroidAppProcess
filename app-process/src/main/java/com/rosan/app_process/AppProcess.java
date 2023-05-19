@@ -20,7 +20,7 @@ import java.util.Map;
 public abstract class AppProcess implements Closeable {
     private INewProcess mNewProcess = null;
 
-    private final Map<String, INewProcess> mChildProcess = new HashMap<>();
+    private final Map<String, IBinder> mChildProcess = new HashMap<>();
 
     public static ProcessParams generateProcessParams(@NonNull String classPath, @NonNull String entryClassName, @NonNull List<String> args) {
         Map<String, String> env = new HashMap<>();
@@ -49,10 +49,11 @@ public abstract class AppProcess implements Closeable {
         return start(classPath, entryClass, Arrays.asList(args));
     }
 
-    public boolean init(String packageName) {
+    public synchronized boolean init(String packageName) {
         if (initialized()) return true;
-        mNewProcess = NewProcessReceiver.start(this, new ComponentName(packageName, NewProcessImpl.class.getName()));
-        IBinder binder = mNewProcess.asBinder();
+        IBinder binder = startProcess(new ComponentName(packageName, NewProcessImpl.class.getName()));
+        if (binder == null) return false;
+        mNewProcess = INewProcess.Stub.asInterface(binder);
         try {
             binder.linkToDeath(() -> {
                 if (mNewProcess == null || mNewProcess.asBinder() != binder) return;
@@ -121,32 +122,33 @@ public abstract class AppProcess implements Closeable {
         }
     }
 
-    public INewProcess startProcess(@NonNull ComponentName componentName) {
-        String token = componentName.flattenToString();
-        INewProcess newProcess = mChildProcess.get(token);
-        if (newProcess != null) return newProcess;
-        newProcess = NewProcessReceiver.start(this, componentName);
-        IBinder binder = newProcess.asBinder();
-        try {
-            binder.linkToDeath(() -> {
-                INewProcess curNewProcess = mChildProcess.get(token);
-                if (curNewProcess == null || curNewProcess.asBinder() != binder) return;
-                mChildProcess.remove(token);
-            }, 0);
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        return newProcess;
+    private final Map<String, Object> locks = new HashMap<>();
+
+    private synchronized Object buildLock(String token) {
+        Object lock = locks.get(token);
+        if (lock == null) lock = new Object();
+        locks.put(token, lock);
+        return lock;
     }
 
-    public void stopProcess(@NonNull ComponentName componentName) {
+    public IBinder startProcess(@NonNull ComponentName componentName) {
         String token = componentName.flattenToString();
-        INewProcess newProcess = mChildProcess.get(token);
-        if (newProcess == null || !newProcess.asBinder().isBinderAlive()) return;
-        try {
-            newProcess.exit(0);
-        } catch (RemoteException e) {
-            e.printStackTrace();
+        synchronized (buildLock(token)) {
+            IBinder existsBinder = mChildProcess.get(token);
+            if (existsBinder != null) return existsBinder;
+            final IBinder binder = NewProcessReceiver.start(this, componentName);
+            if (binder == null) return null;
+            mChildProcess.put(token, binder);
+            try {
+                binder.linkToDeath(() -> {
+                    IBinder curBinder = mChildProcess.get(token);
+                    if (curBinder == null || curBinder != binder) return;
+                    mChildProcess.remove(token);
+                }, 0);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+            return binder;
         }
     }
 

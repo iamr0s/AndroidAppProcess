@@ -11,7 +11,6 @@ import android.os.IBinder;
 
 import androidx.annotation.NonNull;
 
-import java.io.IOException;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -20,11 +19,28 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
 abstract class NewProcessReceiver extends BroadcastReceiver {
-    public static @NonNull INewProcess start(AppProcess appProcess, ComponentName componentName) {
+    private static boolean waitFor(Process process, long timeout, TimeUnit unit) throws InterruptedException {
+        long startTime = System.nanoTime();
+        long rem = unit.toNanos(timeout);
+
+        do {
+            try {
+                process.exitValue();
+                return true;
+            } catch (IllegalArgumentException ex) {
+                if (rem > 0)
+                    Thread.sleep(
+                            Math.min(TimeUnit.NANOSECONDS.toMillis(rem) + 1, 100));
+            }
+            rem = unit.toNanos(timeout) - (System.nanoTime() - startTime);
+        } while (rem > 0);
+        return false;
+    }
+
+    public static IBinder start(AppProcess appProcess, ComponentName componentName) {
         Context context = ActivityThread.currentActivityThread().getApplication();
         String token = UUID.randomUUID().toString();
         IntentFilter filter = new IntentFilter();
@@ -49,16 +65,22 @@ abstract class NewProcessReceiver extends BroadcastReceiver {
                             String.format("--token=%s", token),
                             String.format("--component=%s", componentName.flattenToString())
                     }));
-                    process.get().waitFor();
-                } catch (InterruptedException | IOException ignored) {
-                } finally {
-                    if (process.get() != null) process.get().destroy();
+                    waitFor(process.get(), 15, TimeUnit.SECONDS);
+                } catch (Throwable e) {
+                    e.printStackTrace();
                 }
                 queue.offer(new AtomicReference<>(null));
             });
-            NewProcessResult result = future.get(15, TimeUnit.SECONDS).get();
-            return result != null ? result.getNewProcess() : null;
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            NewProcessResult result = future.get().get();
+            IBinder binder = result != null ? result.getBinder() : null;
+            if (binder == null && process.get() != null) {
+                try {
+                    process.get().destroy();
+                } catch (Throwable ignored) {
+                }
+            }
+            return binder;
+        } catch (ExecutionException | InterruptedException e) {
             e.printStackTrace();
             return null;
         } finally {
@@ -83,8 +105,7 @@ abstract class NewProcessReceiver extends BroadcastReceiver {
         if (token == null) return;
         IBinder binder = extras.getBinder(EXTRA_NEW_PROCESS);
         if (binder == null) return;
-        INewProcess newProcess = INewProcess.Stub.asInterface(binder);
-        onReceive(new NewProcessResult(token, newProcess));
+        onReceive(new NewProcessResult(token, binder));
     }
 
     abstract void onReceive(NewProcessResult result);
@@ -92,11 +113,11 @@ abstract class NewProcessReceiver extends BroadcastReceiver {
     static class NewProcessResult {
         private final @NonNull String mToken;
 
-        private final @NonNull INewProcess mNewProcess;
+        private final @NonNull IBinder mBinder;
 
-        NewProcessResult(@NonNull String token, @NonNull INewProcess newProcess) {
+        NewProcessResult(@NonNull String token, @NonNull IBinder binder) {
             mToken = token;
-            mNewProcess = newProcess;
+            mBinder = binder;
         }
 
         @NonNull
@@ -105,8 +126,8 @@ abstract class NewProcessReceiver extends BroadcastReceiver {
         }
 
         @NonNull
-        public INewProcess getNewProcess() {
-            return mNewProcess;
+        public IBinder getBinder() {
+            return mBinder;
         }
     }
 }

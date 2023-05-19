@@ -31,7 +31,7 @@ public class NewProcessImpl extends INewProcess.Stub {
     }
 
     @Override
-    public IRemoteProcess remoteProcess(List<String> cmdList, Map<String, String> env, String directory) throws RemoteException {
+    public IRemoteProcess remoteProcess(List<String> cmdList, Map<String, String> env, String directory) {
         ProcessBuilder builder = new ProcessBuilder().command(cmdList);
         if (directory != null) builder = builder.directory(new File(directory));
         if (env != null) builder.environment().putAll(env);
@@ -39,7 +39,7 @@ public class NewProcessImpl extends INewProcess.Stub {
         try {
             return new RemoteProcessImpl(builder.start());
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException(e);
         }
     }
 

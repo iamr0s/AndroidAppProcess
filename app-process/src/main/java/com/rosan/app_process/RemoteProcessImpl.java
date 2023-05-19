@@ -28,7 +28,7 @@ public class RemoteProcessImpl extends IRemoteProcess.Stub {
         try {
             mOutputStream = parcelable(mProcess.getOutputStream());
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException(e);
         }
         return mOutputStream;
     }
@@ -39,7 +39,7 @@ public class RemoteProcessImpl extends IRemoteProcess.Stub {
         try {
             mInputStream = parcelable(mProcess.getInputStream());
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException(e);
         }
         return mInputStream;
     }
@@ -50,7 +50,7 @@ public class RemoteProcessImpl extends IRemoteProcess.Stub {
         try {
             mErrorStream = parcelable(mProcess.getErrorStream());
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException(e);
         }
         return mErrorStream;
     }
@@ -70,7 +70,7 @@ public class RemoteProcessImpl extends IRemoteProcess.Stub {
         try {
             return mProcess.waitFor();
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException(e);
         }
     }
 
