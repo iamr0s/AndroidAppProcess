@@ -1,6 +1,8 @@
 package com.rosan.app_process;
 
+import android.app.ActivityThread;
 import android.content.ComponentName;
+import android.content.Context;
 import android.os.IBinder;
 import android.os.Parcel;
 import android.os.RemoteException;
@@ -19,6 +21,8 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class AppProcess implements Closeable {
+    Context mContext = null;
+
     private INewProcess mNewProcess = null;
 
     private final Map<String, IBinder> mChildProcess = new HashMap<>();
@@ -50,9 +54,14 @@ public abstract class AppProcess implements Closeable {
         return start(classPath, entryClass, Arrays.asList(args));
     }
 
-    public synchronized boolean init(String packageName) {
+    public boolean init() {
+        return init(ActivityThread.currentActivityThread().getApplication());
+    }
+
+    public synchronized boolean init(@NonNull Context context) {
         if (initialized()) return true;
-        IBinder binder = startProcess(new ComponentName(packageName, NewProcessImpl.class.getName()));
+        mContext = context;
+        IBinder binder = startProcess(new ComponentName(mContext.getPackageName(), NewProcessImpl.class.getName()));
         if (binder == null) return false;
         mNewProcess = INewProcess.Stub.asInterface(binder);
         try {
@@ -67,7 +76,7 @@ public abstract class AppProcess implements Closeable {
     }
 
     public boolean initialized() {
-        return mNewProcess != null && mNewProcess.asBinder().isBinderAlive();
+        return mContext != null && mNewProcess != null && mNewProcess.asBinder().isBinderAlive();
     }
 
     @Override

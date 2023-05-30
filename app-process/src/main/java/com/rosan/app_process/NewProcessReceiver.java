@@ -1,6 +1,5 @@
 package com.rosan.app_process;
 
-import android.app.ActivityThread;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -41,7 +40,7 @@ abstract class NewProcessReceiver extends BroadcastReceiver {
     }
 
     public static IBinder start(AppProcess appProcess, ComponentName componentName) {
-        Context context = ActivityThread.currentActivityThread().getApplication();
+        Context context = appProcess.mContext;
         String token = UUID.randomUUID().toString();
         IntentFilter filter = new IntentFilter();
         filter.addAction(ACTION_SEND_NEW_PROCESS);
