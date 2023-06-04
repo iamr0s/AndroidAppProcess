@@ -39,8 +39,7 @@ abstract class NewProcessReceiver extends BroadcastReceiver {
         return false;
     }
 
-    public static IBinder start(AppProcess appProcess, ComponentName componentName) {
-        Context context = appProcess.mContext;
+    public static IBinder start(Context context, AppProcess appProcess, ComponentName componentName) {
         String token = UUID.randomUUID().toString();
         IntentFilter filter = new IntentFilter();
         filter.addAction(ACTION_SEND_NEW_PROCESS);

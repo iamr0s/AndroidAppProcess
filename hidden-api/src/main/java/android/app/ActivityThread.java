@@ -1,8 +1,5 @@
 package android.app;
 
-import android.content.Context;
-import android.content.IContentProvider;
-
 public class ActivityThread {
     public static ActivityThread currentActivityThread() {
         throw new RuntimeException("STUB");
@@ -20,11 +17,7 @@ public class ActivityThread {
         throw new RuntimeException("STUB");
     }
 
-    public final IContentProvider acquireProvider(Context c, String auth, int userId, boolean stable) {
-        throw new RuntimeException("STUB");
-    }
-
-    public final boolean releaseProvider(IContentProvider provider, boolean stable) {
+    public final LoadedApk peekPackageInfo(String packageName, boolean includeCode) {
         throw new RuntimeException("STUB");
     }
 }

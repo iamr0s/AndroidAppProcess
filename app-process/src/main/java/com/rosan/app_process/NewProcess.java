@@ -2,10 +2,10 @@ package com.rosan.app_process;
 
 import android.annotation.SuppressLint;
 import android.app.ActivityThread;
-import android.app.ContextImpl;
 import android.app.LoadedApk;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -14,6 +14,7 @@ import android.os.IBinder;
 import android.os.IInterface;
 import android.os.Looper;
 import android.os.Process;
+import android.util.Log;
 
 import androidx.annotation.Keep;
 
@@ -21,11 +22,9 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.lsposed.hiddenapibypass.HiddenApiBypass;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -34,17 +33,20 @@ import java.util.List;
 import java.util.Objects;
 
 public class NewProcess {
+    private static final String TAG = "NewProcess";
+
     @Keep
     public static void main(String[] args) throws Throwable {
         try {
             innerMain(args);
         } catch (Throwable e) {
             e.printStackTrace();
+            Log.e(TAG, "main", e);
             throw e;
         }
     }
 
-    private static void innerMain(String[] args) throws ParseException {
+    private static void innerMain(String[] args) throws Throwable {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             HiddenApiBypass.addHiddenApiExemptions("");
         }
@@ -55,40 +57,25 @@ public class NewProcess {
         String component = cmdLine.getOptionValue("component");
         ComponentName componentName = ComponentName.unflattenFromString(component);
 
-        if (Looper.getMainLooper() == null) {
-            Looper.prepareMainLooper();
-        }
-
-        ActivityThread activityThread = ActivityThread.systemMain();
-        Context context = activityThread.getSystemContext();
-        Context uidContext = createUIDContext(context, activityThread);
+        Context context = createUIDContext();
 
         Bundle bundle = new Bundle();
-        IBinder binder = createBinder(uidContext, componentName);
+        IBinder binder = createBinder(context, componentName);
         bundle.putBinder(NewProcessReceiver.EXTRA_NEW_PROCESS, binder);
         bundle.putString(NewProcessReceiver.EXTRA_TOKEN, token);
         Intent intent = new Intent(NewProcessReceiver.ACTION_SEND_NEW_PROCESS)
                 .setPackage(packageName)
                 .putExtras(bundle);
-        uidContext.sendBroadcast(intent);
+        context.sendBroadcast(intent);
         Looper.loop();
     }
 
-    public static IBinder createBinder(Context context, ComponentName componentName) {
+    public static IBinder createBinder(Context context, ComponentName componentName) throws PackageManager.NameNotFoundException, ClassNotFoundException {
         Context packageContext = context;
-        if (!Objects.equals(context.getPackageName(), componentName.getPackageName())) {
-            try {
-                packageContext = context.createPackageContext(componentName.getPackageName(), Context.CONTEXT_IGNORE_SECURITY | Context.CONTEXT_INCLUDE_CODE);
-            } catch (PackageManager.NameNotFoundException e) {
-                throw new RuntimeException(e);
-            }
-        }
+        if (!Objects.equals(context.getPackageName(), componentName.getPackageName()))
+            packageContext = context.createPackageContext(componentName.getPackageName(), Context.CONTEXT_IGNORE_SECURITY | Context.CONTEXT_INCLUDE_CODE);
         Class<?> clazz;
-        try {
-            clazz = packageContext.getClassLoader().loadClass(componentName.getClassName());
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        }
+        clazz = packageContext.getClassLoader().loadClass(componentName.getClassName());
         Constructor<?> constructor = null;
         try {
             constructor = clazz.getDeclaredConstructor(Context.class);
@@ -109,52 +96,31 @@ public class NewProcess {
         return Arrays.asList(packageNames);
     }
 
-    public static Context createUIDContext(Context context, ActivityThread activityThread) {
+    @SuppressLint("PrivateApi")
+    public static Context createUIDContext() throws PackageManager.NameNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException, ClassNotFoundException {
+        if (Looper.getMainLooper() == null) {
+            Looper.prepareMainLooper();
+        }
+
+        ActivityThread activityThread = ActivityThread.systemMain();
+        Context context = activityThread.getSystemContext();
+
         int uid = Process.myUid();
-        if (uid < 100000) return context;
         List<String> packageNames = getPackagesForUid(context, uid);
         if (packageNames.isEmpty()) return context;
         if (packageNames.contains(context.getPackageName()) && (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || packageNames.contains(context.getOpPackageName())))
             return context;
+
         String packageName = packageNames.get(0);
-        ContextImpl packageContext = createPackageContext(context, packageName);
-        if (packageContext == null) return context;
-        LoadedApk loadedApk = getLoadedApk(packageContext);
-        if (loadedApk == null) return context;
-        return createAppContext(packageContext, activityThread, loadedApk);
-    }
 
-    public static ContextImpl createPackageContext(Context context, String packageName) {
-        ContextImpl packageContext = null;
-        try {
-            packageContext = (ContextImpl) context.createPackageContext(packageName, Context.CONTEXT_IGNORE_SECURITY | Context.CONTEXT_INCLUDE_CODE);
-        } catch (PackageManager.NameNotFoundException e) {
-            e.printStackTrace();
-        }
-        return packageContext;
-    }
+        context.createPackageContext(packageName, Context.CONTEXT_IGNORE_SECURITY | Context.CONTEXT_INCLUDE_CODE);
 
-    @SuppressLint("PrivateApi")
-    public static LoadedApk getLoadedApk(ContextImpl context) {
-        try {
-            Field field = context.getClass().getDeclaredField("mPackageInfo");
-            field.setAccessible(true);
-            return (LoadedApk) field.get(context);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.printStackTrace();
-            return null;
+        Context impl = context;
+        while (impl instanceof ContextWrapper) {
+            impl = ((ContextWrapper) impl).getBaseContext();
         }
-    }
-
-    @SuppressLint("PrivateApi")
-    public static ContextImpl createAppContext(ContextImpl context, ActivityThread activityThread, LoadedApk loadedApk) {
-        try {
-            Method method = context.getClass().getDeclaredMethod("createAppContext", ActivityThread.class, LoadedApk.class);
-            method.setAccessible(true);
-            return (ContextImpl) method.invoke(context, activityThread, loadedApk);
-        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-            e.printStackTrace();
-            return null;
-        }
+        Method method = impl.getClass().getDeclaredMethod("createAppContext", ActivityThread.class, LoadedApk.class);
+        method.setAccessible(true);
+        return (Context) method.invoke(null, activityThread, activityThread.peekPackageInfo(packageName, true));
     }
 }

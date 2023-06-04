@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class AppProcess implements Closeable {
-    Context mContext = null;
+    private Context mContext = null;
 
     private INewProcess mNewProcess = null;
 
@@ -80,7 +80,8 @@ public abstract class AppProcess implements Closeable {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
+        mContext = null;
         if (mNewProcess == null || !mNewProcess.asBinder().pingBinder()) return;
         try {
             mNewProcess.exit(0);
@@ -146,7 +147,7 @@ public abstract class AppProcess implements Closeable {
         synchronized (buildLock(token)) {
             IBinder existsBinder = mChildProcess.get(token);
             if (existsBinder != null) return existsBinder;
-            final IBinder binder = NewProcessReceiver.start(this, componentName);
+            final IBinder binder = NewProcessReceiver.start(mContext, this, componentName);
             if (binder == null) return null;
             mChildProcess.put(token, binder);
             try {
