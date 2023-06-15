@@ -24,10 +24,13 @@ public class NewProcessImpl extends INewProcess.Stub {
     }
 
     private boolean targetTransact(IBinder binder, int code, Parcel data, Parcel reply, int flags) throws RemoteException {
-        long id = clearCallingIdentity();
-        boolean result = binder.transact(code, data, reply, flags);
-        restoreCallingIdentity(id);
-        return result;
+        try {
+            return AppProcess.binderWithCleanCallingIdentity(() -> binder.transact(code, data, reply, flags));
+        } catch (RemoteException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

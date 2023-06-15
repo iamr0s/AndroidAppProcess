@@ -3,6 +3,7 @@ package com.rosan.app_process;
 import android.app.ActivityThread;
 import android.content.ComponentName;
 import android.content.Context;
+import android.os.Binder;
 import android.os.IBinder;
 import android.os.Parcel;
 import android.os.RemoteException;
@@ -19,6 +20,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 public abstract class AppProcess implements Closeable {
     private Context mContext = null;
@@ -36,6 +38,15 @@ public abstract class AppProcess implements Closeable {
         cmdList.add(entryClassName);
         cmdList.addAll(args);
         return new ProcessParams(cmdList, env, null);
+    }
+
+    public static <T> T binderWithCleanCallingIdentity(Callable<T> action) throws Exception {
+        final long callingIdentity = Binder.clearCallingIdentity();
+        try {
+            return action.call();
+        } finally {
+            Binder.restoreCallingIdentity(callingIdentity);
+        }
     }
 
     public @NonNull Process start(@NonNull String classPath, @NonNull String entryClassName, @NonNull List<String> args) throws IOException {
@@ -103,7 +114,6 @@ public abstract class AppProcess implements Closeable {
     }
 
     public boolean remoteTransact(IBinder binder, int code, Parcel data, Parcel reply, int flags) {
-        boolean result = false;
         IBinder processBinder = requireNewProcess().asBinder();
         Parcel processData = Parcel.obtain();
         try {
@@ -112,13 +122,12 @@ public abstract class AppProcess implements Closeable {
             processData.writeInt(code);
             processData.writeInt(flags);
             processData.appendFrom(data, 0, data.dataSize());
-            result = processBinder.transact(IBinder.FIRST_CALL_TRANSACTION + 2, processData, reply, 0);
+            return processBinder.transact(IBinder.FIRST_CALL_TRANSACTION + 2, processData, reply, 0);
         } catch (RemoteException e) {
             throw new RuntimeException(e);
         } finally {
             processData.recycle();
         }
-        return result;
     }
 
     public IBinder binderWrapper(IBinder binder) {
