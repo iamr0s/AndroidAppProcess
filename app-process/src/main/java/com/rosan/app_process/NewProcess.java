@@ -17,6 +17,7 @@ import android.os.Process;
 import android.util.Log;
 
 import androidx.annotation.Keep;
+import androidx.annotation.NonNull;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
@@ -34,6 +35,8 @@ import java.util.Objects;
 
 public class NewProcess {
     private static final String TAG = "NewProcess";
+
+    private static ActivityThread mActivityThread = null;
 
     @Keep
     public static void main(String[] args) throws Throwable {
@@ -57,25 +60,20 @@ public class NewProcess {
         String component = cmdLine.getOptionValue("component");
         ComponentName componentName = ComponentName.unflattenFromString(component);
 
-        Context context = createUIDContext();
-
         Bundle bundle = new Bundle();
-        IBinder binder = createBinder(context, componentName);
+        IBinder binder = createBinder(componentName);
         bundle.putBinder(NewProcessReceiver.EXTRA_NEW_PROCESS, binder);
         bundle.putString(NewProcessReceiver.EXTRA_TOKEN, token);
         Intent intent = new Intent(NewProcessReceiver.ACTION_SEND_NEW_PROCESS)
                 .setPackage(packageName)
                 .putExtras(bundle);
-        context.sendBroadcast(intent);
+        getSystemContext().sendBroadcast(intent);
         Looper.loop();
     }
 
-    public static IBinder createBinder(Context context, ComponentName componentName) throws PackageManager.NameNotFoundException, ClassNotFoundException {
-        Context packageContext = context;
-        if (!Objects.equals(context.getPackageName(), componentName.getPackageName()))
-            packageContext = context.createPackageContext(componentName.getPackageName(), Context.CONTEXT_IGNORE_SECURITY | Context.CONTEXT_INCLUDE_CODE);
-        Class<?> clazz;
-        clazz = packageContext.getClassLoader().loadClass(componentName.getClassName());
+    public static IBinder createBinder(ComponentName componentName) throws PackageManager.NameNotFoundException, NoSuchFieldException, NoSuchMethodException, ClassNotFoundException {
+        Context packageContext = getSystemContext().createPackageContext(componentName.getPackageName(), Context.CONTEXT_IGNORE_SECURITY | Context.CONTEXT_INCLUDE_CODE);
+        Class<?> clazz = packageContext.getClassLoader().loadClass(componentName.getClassName());
         Constructor<?> constructor = null;
         try {
             constructor = clazz.getDeclaredConstructor(Context.class);
@@ -83,7 +81,7 @@ public class NewProcess {
         }
         Object result;
         try {
-            result = constructor != null ? constructor.newInstance(context) : clazz.newInstance();
+            result = constructor != null ? constructor.newInstance(getUIDContext()) : clazz.newInstance();
         } catch (IllegalAccessException | InstantiationException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
@@ -96,14 +94,23 @@ public class NewProcess {
         return Arrays.asList(packageNames);
     }
 
-    @SuppressLint("PrivateApi")
-    public static Context createUIDContext() throws PackageManager.NameNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException, ClassNotFoundException {
+    private static @NonNull ActivityThread getActivityThread() {
+        if (mActivityThread != null) return mActivityThread;
         if (Looper.getMainLooper() == null) {
             Looper.prepareMainLooper();
         }
 
-        ActivityThread activityThread = ActivityThread.systemMain();
-        Context context = activityThread.getSystemContext();
+        mActivityThread = ActivityThread.systemMain();
+        Objects.requireNonNull(mActivityThread);
+        return getActivityThread();
+    }
+
+    private static @NonNull Context getSystemContext() {
+        return getActivityThread().getSystemContext();
+    }
+
+    public static Context getUIDContext() throws PackageManager.NameNotFoundException, NoSuchFieldException, InvocationTargetException, NoSuchMethodException, IllegalAccessException {
+        Context context = getSystemContext();
 
         int uid = Process.myUid();
         List<String> packageNames = getPackagesForUid(context, uid);
@@ -111,16 +118,18 @@ public class NewProcess {
         if (packageNames.contains(context.getPackageName()) && (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || packageNames.contains(context.getOpPackageName())))
             return context;
 
-        String packageName = packageNames.get(0);
+        return createAppContext(context, packageNames.get(0));
+    }
 
-        context.createPackageContext(packageName, Context.CONTEXT_IGNORE_SECURITY | Context.CONTEXT_INCLUDE_CODE);
-
-        Context impl = context;
+    @SuppressLint("PrivateApi")
+    private static Context createAppContext(Context context, String packageName) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException, PackageManager.NameNotFoundException, NoSuchFieldException {
+        Context impl = context.createPackageContext(packageName, Context.CONTEXT_IGNORE_SECURITY | Context.CONTEXT_INCLUDE_CODE);
         while (impl instanceof ContextWrapper) {
             impl = ((ContextWrapper) impl).getBaseContext();
         }
+
         Method method = impl.getClass().getDeclaredMethod("createAppContext", ActivityThread.class, LoadedApk.class);
         method.setAccessible(true);
-        return (Context) method.invoke(null, activityThread, activityThread.peekPackageInfo(packageName, true));
+        return (Context) method.invoke(null, getActivityThread(), getActivityThread().peekPackageInfo(packageName, true));
     }
 }
