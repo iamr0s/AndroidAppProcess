@@ -151,12 +151,17 @@ public abstract class AppProcess implements Closeable {
         return lock;
     }
 
+    public IBinder startProcess(@NonNull ComponentName componentName, boolean useCache) {
+        if (!useCache) startProcessUnchecked(componentName);
+        return startProcess(componentName);
+    }
+
     public IBinder startProcess(@NonNull ComponentName componentName) {
         String token = componentName.flattenToString();
         synchronized (buildLock(token)) {
             IBinder existsBinder = mChildProcess.get(token);
             if (existsBinder != null) return existsBinder;
-            final IBinder binder = NewProcessReceiver.start(mContext, this, componentName);
+            final IBinder binder = startProcessUnchecked(componentName);
             if (binder == null) return null;
             mChildProcess.put(token, binder);
             try {
@@ -170,6 +175,10 @@ public abstract class AppProcess implements Closeable {
             }
             return binder;
         }
+    }
+
+    private IBinder startProcessUnchecked(@NonNull ComponentName componentName) {
+        return NewProcessReceiver.start(mContext, this, componentName);
     }
 
     public static class Default extends AppProcess {
