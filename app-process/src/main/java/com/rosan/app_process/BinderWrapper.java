@@ -11,12 +11,12 @@ import androidx.annotation.Nullable;
 import java.io.FileDescriptor;
 
 class BinderWrapper implements IBinder {
-    private final AppProcess mAppProcess;
+    private final INewProcess mNewProcess;
 
     private final IBinder mBinder;
 
-    BinderWrapper(@NonNull AppProcess appProcess, @NonNull IBinder binder) {
-        this.mAppProcess = appProcess;
+    BinderWrapper(@NonNull INewProcess newProcess, @NonNull IBinder binder) {
+        this.mNewProcess = newProcess;
         this.mBinder = binder;
     }
 
@@ -54,7 +54,7 @@ class BinderWrapper implements IBinder {
 
     @Override
     public boolean transact(int code, @NonNull Parcel data, @Nullable Parcel reply, int flags) throws RemoteException {
-        return mAppProcess.remoteTransact(mBinder, code, data, reply, flags);
+        return AppProcess.remoteTransact(mNewProcess, mBinder, code, data, reply, flags);
     }
 
     @Override

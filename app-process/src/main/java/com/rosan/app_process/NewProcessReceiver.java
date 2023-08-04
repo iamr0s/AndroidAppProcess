@@ -10,6 +10,7 @@ import android.os.IBinder;
 
 import androidx.annotation.NonNull;
 
+import java.io.IOException;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -55,30 +56,24 @@ abstract class NewProcessReceiver extends BroadcastReceiver {
         ExecutorService executorService = Executors.newCachedThreadPool();
         Future<AtomicReference<NewProcessResult>> future = executorService.submit(queue::take);
         try {
-            AtomicReference<Process> process = new AtomicReference<>(null);
+            Process process = appProcess.start(context.getPackageCodePath(), NewProcess.class, new String[]{
+                    String.format("--package=%s", context.getPackageName()),
+                    String.format("--token=%s", token),
+                    String.format("--component=%s", componentName.flattenToString())
+            });
             executorService.execute(() -> {
                 try {
-                    process.set(appProcess.start(context.getPackageCodePath(), NewProcess.class, new String[]{
-                            String.format("--package=%s", context.getPackageName()),
-                            String.format("--token=%s", token),
-                            String.format("--component=%s", componentName.flattenToString())
-                    }));
-                    waitFor(process.get(), 15, TimeUnit.SECONDS);
+                    waitFor(process, 15, TimeUnit.SECONDS);
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
-                queue.offer(new AtomicReference<>(null));
+                queue.offer(new AtomicReference<>());
             });
             NewProcessResult result = future.get().get();
             IBinder binder = result != null ? result.getBinder() : null;
-            if (binder == null && process.get() != null) {
-                try {
-                    process.get().destroy();
-                } catch (Throwable ignored) {
-                }
-            }
+            if (binder == null) process.destroy();
             return binder;
-        } catch (ExecutionException | InterruptedException e) {
+        } catch (IOException | ExecutionException | InterruptedException e) {
             e.printStackTrace();
             return null;
         } finally {

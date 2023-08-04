@@ -96,9 +96,7 @@ public class NewProcess {
 
     private static @NonNull ActivityThread getActivityThread() {
         if (mActivityThread != null) return mActivityThread;
-        if (Looper.getMainLooper() == null) {
-            Looper.prepareMainLooper();
-        }
+        if (Looper.myLooper() == null) Looper.prepare();
 
         mActivityThread = ActivityThread.systemMain();
         Objects.requireNonNull(mActivityThread);

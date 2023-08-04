@@ -30,14 +30,13 @@ public abstract class AppProcess implements Closeable {
     private final Map<String, IBinder> mChildProcess = new HashMap<>();
 
     public static ProcessParams generateProcessParams(@NonNull String classPath, @NonNull String entryClassName, @NonNull List<String> args) {
-        Map<String, String> env = new HashMap<>();
-        env.put("CLASSPATH", classPath);
         List<String> cmdList = new ArrayList<>();
         cmdList.add("/system/bin/app_process");
+        cmdList.add("-Djava.class.path=" + classPath);
         cmdList.add("/system/bin");
         cmdList.add(entryClassName);
         cmdList.addAll(args);
-        return new ProcessParams(cmdList, env, null);
+        return new ProcessParams(cmdList, null, null);
     }
 
     public static <T> T binderWithCleanCallingIdentity(Callable<T> action) throws Exception {
@@ -46,6 +45,27 @@ public abstract class AppProcess implements Closeable {
             return action.call();
         } finally {
             Binder.restoreCallingIdentity(callingIdentity);
+        }
+    }
+
+    public static IBinder binderWrapper(INewProcess newProcess, IBinder binder) {
+        return new BinderWrapper(newProcess, binder);
+    }
+
+    public static boolean remoteTransact(INewProcess newProcess, IBinder binder, int code, Parcel data, Parcel reply, int flags) {
+        IBinder processBinder = newProcess.asBinder();
+        Parcel processData = Parcel.obtain();
+        try {
+            processData.writeInterfaceToken(processBinder.getInterfaceDescriptor());
+            processData.writeStrongBinder(binder);
+            processData.writeInt(code);
+            processData.writeInt(flags);
+            processData.appendFrom(data, 0, data.dataSize());
+            return processBinder.transact(IBinder.FIRST_CALL_TRANSACTION + 2, processData, reply, 0);
+        } catch (RemoteException e) {
+            throw new RuntimeException(e);
+        } finally {
+            processData.recycle();
         }
     }
 
@@ -114,24 +134,11 @@ public abstract class AppProcess implements Closeable {
     }
 
     public boolean remoteTransact(IBinder binder, int code, Parcel data, Parcel reply, int flags) {
-        IBinder processBinder = requireNewProcess().asBinder();
-        Parcel processData = Parcel.obtain();
-        try {
-            processData.writeInterfaceToken(processBinder.getInterfaceDescriptor());
-            processData.writeStrongBinder(binder);
-            processData.writeInt(code);
-            processData.writeInt(flags);
-            processData.appendFrom(data, 0, data.dataSize());
-            return processBinder.transact(IBinder.FIRST_CALL_TRANSACTION + 2, processData, reply, 0);
-        } catch (RemoteException e) {
-            throw new RuntimeException(e);
-        } finally {
-            processData.recycle();
-        }
+        return remoteTransact(requireNewProcess(), binder, code, data, reply, flags);
     }
 
     public IBinder binderWrapper(IBinder binder) {
-        return new BinderWrapper(this, binder);
+        return binderWrapper(requireNewProcess(), binder);
     }
 
     public Process remoteProcess(@NonNull List<String> cmdList, @Nullable Map<String, String> env, @Nullable String directory) {
