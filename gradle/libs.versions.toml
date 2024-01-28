@@ -1,0 +1,21 @@
+# Google Maven
+# https://maven.google.com/web/index.html?hl=zh-cn
+
+# Gradle Plugins
+# https://plugins.gradle.org/
+
+# Maven
+# https://mvnrepository.com/
+
+[versions]
+agp = "8.2.2"
+
+[plugins]
+agp-lib = { id = "com.android.library", version.ref = "agp" }
+agp-app = { id = "com.android.application", version.ref = "agp" }
+
+[libraries]
+annotation = { module = "androidx.annotation:annotation", version = "1.7.1" }
+commons-cli = { module = "commons-cli:commons-cli", version = "1.5.0" }
+hiddenapibypass = { module = "org.lsposed.hiddenapibypass:hiddenapibypass", version = "4.3" }
+
