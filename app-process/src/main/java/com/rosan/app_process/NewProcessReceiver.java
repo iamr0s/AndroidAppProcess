@@ -5,6 +5,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 
@@ -52,7 +53,9 @@ abstract class NewProcessReceiver extends BroadcastReceiver {
                 queue.offer(new AtomicReference<>(result));
             }
         };
-        context.registerReceiver(receiver, filter);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+            context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        else context.registerReceiver(receiver, filter);
         ExecutorService executorService = Executors.newCachedThreadPool();
         Future<AtomicReference<NewProcessResult>> future = executorService.submit(queue::take);
         try {
