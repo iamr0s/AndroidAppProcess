@@ -1,0 +1,48 @@
+name: Build
+
+on:
+  push:
+    paths-ignore:
+      - '*.md'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Set environment
+        run: |
+          {
+            echo "repo=$(echo ${GITHUB_REPOSITORY#$GITHUB_REPOSITORY_OWNER/})"
+            echo "version=v$(grep artifactVersion build.gradle| awk -F\" '{print $2}')"
+            echo "commit=$(echo ${{ github.sha }} | cut -c-7)"
+          } >> $GITHUB_ENV
+
+      - name: Build
+        run: |
+          ./gradlew --no-daemon --warning-mode=all assembleDebug
+          cp app-process/build/outputs/aar/app-process-debug.aar AndroidAppProcess-${{ env.version }}@${{ env.commit }}.aar
+          cp app/build/outputs/apk/debug/app-debug.apk AppProcessDemo@${{ env.commit }}.apk
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: "${{ env.repo }}-${{ env.version }}@${{ env.commit }}"
+          path: |
+            AndroidAppProcess-${{ env.version }}@${{ env.commit }}.aar
+            AppProcessDemo@${{ env.commit }}.apk

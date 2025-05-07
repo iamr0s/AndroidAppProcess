@@ -1,37 +1,36 @@
 plugins {
-    id 'com.android.application'
+    alias(libs.plugins.agp.app)
 }
 
 android {
-    namespace 'com.rosan.app_process.demo'
-    compileSdk 33
+    namespace = "com.rosan.app_process.demo"
+    compileSdk = 35
 
     defaultConfig {
-        applicationId "com.rosan.app_process.demo"
-        minSdk 19
-        targetSdk 33
-        versionCode 1
-        versionName "1.0"
-
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        minSdk = 19
+        targetSdk = 35
+        versionCode = 1
+        versionName = "1.0"
+        multiDexEnabled = false
+        proguardFiles += "proguard-rules.pro"
     }
 
     buildTypes {
+        configureEach {
+            signingConfig = signingConfigs.debug
+        }
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            minifyEnabled = true
+            shrinkResources = true
         }
     }
+
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
 }
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.8.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-
-    implementation project(':app-process')
+    implementation project(":app-process")
 }
