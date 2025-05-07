@@ -1,24 +1,32 @@
 plugins {
-    id 'com.android.library'
-    id 'maven-publish'
-    id 'signing'
+    alias(libs.plugins.agp.lib)
+    id "maven-publish"
+    id "signing"
 }
 
+def ossrhUsername = ''
+def ossrhPassword = ''
 def extGradlePath = rootDir.path + "/keystore/r0s.gradle"
 if (file(extGradlePath).exists()) {
     apply from: extGradlePath
 }
 
 android {
-    namespace 'com.rosan.app_process'
-    compileSdk 34
+    namespace = "com.rosan.app_process"
+    compileSdk = 35
 
     defaultConfig {
-        minSdk 19
+        minSdk = 19
     }
 
     buildFeatures {
-        aidl true
+        buildConfig = true
+        aidl = true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
 
     publishing {
@@ -30,20 +38,25 @@ android {
 }
 
 dependencies {
-    compileOnly libs.annotation
-    compileOnly project(':hidden-api')
-    implementation libs.commons.cli
-    implementation libs.hiddenapibypass
+    compileOnly project(":hidden-api")
+    compileOnly(libs.annotation)
+
+    implementation(libs.commons.cli)
+    implementation(libs.hiddenapibypass)
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs << "-Xlint:deprecation" << "-Xlint:unchecked"
 }
 
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            group rootProject.groupId
-            artifactId rootProject.artifactId
-            version rootProject.artifactVersion
+            group = rootProject.groupId
+            artifactId = rootProject.artifactId
+            version = rootProject.artifactVersion
             afterEvaluate {
-                from components.release
+                from components.findByName("release")
             }
             pom {
                 name = rootProject.POM_NAME
@@ -70,11 +83,11 @@ publishing {
     }
     repositories {
         maven {
-            name 'ossrh'
-            url 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/'
+            name = "ossrh"
+            url = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
             credentials {
-                username ossrhUsername
-                password ossrhPassword
+                username = ossrhUsername
+                password = ossrhPassword
             }
         }
     }

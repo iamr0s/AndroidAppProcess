@@ -8,7 +8,7 @@ Encapsulation of Android app_process, you can use it just like Android Service.
 
 ### Import library
 
-```gradle
+```Groovy
 implementation 'io.github.iamr0s:AndroidAppProcess:<version>'
 ```
 
@@ -35,6 +35,7 @@ process.init(context.getPackageName());
 ```java
 AppProcess process = new AppProcess.Root();
 process.init(context.getPackageName());
+
 IPackageManager manager = android.os.ServiceManager.getService("package");
 IBinder binderWrapper = process.binderWrapper(manager.asBinder());
 IPackageManager managerWrapper = IPackageManager.Stub.asInterface(binderWrapper);

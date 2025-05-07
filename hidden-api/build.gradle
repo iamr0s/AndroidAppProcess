@@ -1,16 +1,25 @@
 plugins {
-    id("com.android.library")
+    alias(libs.plugins.agp.lib)
 }
 
 android {
-    namespace "com.rosan.hidden_api"
-    compileSdk 34
+    namespace = "com.rosan.hidden_api"
+    compileSdk = 35
 
     defaultConfig {
-        minSdk 16
+        minSdk = 19
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
 }
 
 dependencies {
-    compileOnly libs.annotation
+    compileOnly(libs.annotation)
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs << "-Xlint:deprecation" << "-Xlint:unchecked"
 }
