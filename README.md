@@ -18,14 +18,14 @@ implementation 'io.github.iamr0s:AndroidAppProcess:<version>'
 
 ```java
 AppProcess process = new AppProcess.Default();
-process.init(context.getPackageName());
+process.init(context);
 ```
 
 - Root
 
 ```java
 AppProcess process = new AppProcess.Root();
-process.init(context.getPackageName());
+process.init(context);
 ```
 
 ### 2. Use it.
@@ -34,13 +34,13 @@ process.init(context.getPackageName());
 
 ```java
 AppProcess process = new AppProcess.Root();
-process.init(context.getPackageName());
+process.init(context);
 
-IPackageManager manager = android.os.ServiceManager.getService("package");
+IBinder manager = ServiceManager.getService("package");
 IBinder binderWrapper = process.binderWrapper(manager.asBinder());
 IPackageManager managerWrapper = IPackageManager.Stub.asInterface(binderWrapper);
 
-managerWrapper.uninstall(...) // will call it in root.
+managerWrapper.uninstall(...); // will call it in root.
 ```
 
 - More

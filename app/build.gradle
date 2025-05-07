@@ -32,5 +32,6 @@ android {
 }
 
 dependencies {
+    compileOnly project(":hidden-api")
     implementation project(":app-process")
 }
