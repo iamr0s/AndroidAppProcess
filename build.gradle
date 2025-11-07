@@ -5,21 +5,8 @@ plugins {
 }
 
 ext {
-    groupId = "io.github.iamr0s"
-    artifactId = "AndroidAppProcess"
-    artifactVersion = "1.3.1"
-    POM_NAME = "Android app_process"
-    POM_DESCRIPTION = "Run Android app_process just like Android Service."
-    POM_URL = "https://github.com/iamr0s/AndroidAppProcess"
-    POM_SCM_URL = "https://github.com/iamr0s/AndroidAppProcess"
-    POM_SCM_CONNECTION = "scm:git@github.com:iamr0s/AndroidAppProcess.git"
-    POM_SCM_DEV_CONNECTION = "scm:git@github.com:iamr0s/AndroidAppProcess.git"
+    MIN_SDK = 19
+    TARGET_SDK = 36
 
-    POM_LICENCE_NAME = "LGPL v3.0 License"
-    POM_LICENCE_URL = "https://github.com/iamr0s/AndroidAppProcess/blob/main/LICENSE"
-    POM_LICENCE_DIST = "repo"
-
-    POM_DEVELOPER_ID = "iamr0s"
-    POM_DEVELOPER_NAME = "iamr0s"
-    POM_DEVELOPER_URL = "https://github.com/iamr0s"
+    ARTIFACT_VERSION = "1.3.1"
 }
