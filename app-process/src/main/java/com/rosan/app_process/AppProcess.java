@@ -105,7 +105,7 @@ public abstract class AppProcess implements Closeable {
         } catch (RemoteException e) {
             e.printStackTrace();
         }
-        return init();
+        return initialized();
     }
 
     /*
