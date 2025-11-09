@@ -96,6 +96,7 @@ public abstract class AppProcess implements Closeable {
 
         IProcessManager manager = newManager();
         if (manager == null) return false;
+        mManager = manager;
 
         try {
             manager.asBinder().linkToDeath(() -> {
