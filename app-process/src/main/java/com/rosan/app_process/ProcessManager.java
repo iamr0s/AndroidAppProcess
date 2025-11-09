@@ -15,9 +15,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.Map;
 
-public class NewProcessImpl extends INewProcess.Stub {
+public class ProcessManager extends IProcessManager.Stub {
     @Keep
-    public NewProcessImpl() {
+    public ProcessManager() {
         super();
     }
 

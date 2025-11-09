@@ -3,7 +3,7 @@ package com.rosan.app_process;
 import com.rosan.app_process.IRemoteProcess;
 import com.rosan.app_process.ParcelableBinder;
 
-interface INewProcess {
+interface IProcessManager {
     void exit(int code) = 1;
 
     // remote binder transact: 2

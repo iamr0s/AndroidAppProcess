@@ -20,12 +20,13 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 
 public abstract class AppProcess implements Closeable {
     private Context mContext = null;
 
-    private INewProcess mNewProcess = null;
+    private IProcessManager mManager = null;
 
     private final Map<String, IBinder> mChildProcess = new HashMap<>();
 
@@ -48,20 +49,20 @@ public abstract class AppProcess implements Closeable {
         }
     }
 
-    public static IBinder binderWrapper(INewProcess newProcess, IBinder binder) {
-        return new BinderWrapper(newProcess, binder);
+    public static IBinder binderWrapper(IProcessManager manager, IBinder binder) {
+        return new BinderWrapper(manager, binder);
     }
 
-    public static boolean remoteTransact(INewProcess newProcess, IBinder binder, int code, Parcel data, Parcel reply, int flags) {
-        IBinder processBinder = newProcess.asBinder();
+    public static boolean remoteTransact(IProcessManager manager, IBinder binder, int code, Parcel data, Parcel reply, int flags) {
+        IBinder managerBinder = manager.asBinder();
         Parcel processData = Parcel.obtain();
         try {
-            processData.writeInterfaceToken(processBinder.getInterfaceDescriptor());
+            processData.writeInterfaceToken(Objects.requireNonNull(managerBinder.getInterfaceDescriptor()));
             processData.writeStrongBinder(binder);
             processData.writeInt(code);
             processData.writeInt(flags);
             processData.appendFrom(data, 0, data.dataSize());
-            return processBinder.transact(IBinder.FIRST_CALL_TRANSACTION + 2, processData, reply, 0);
+            return managerBinder.transact(IBinder.FIRST_CALL_TRANSACTION + 2, processData, reply, 0);
         } catch (RemoteException e) {
             throw new RuntimeException(e);
         } finally {
@@ -92,13 +93,16 @@ public abstract class AppProcess implements Closeable {
     public synchronized boolean init(@NonNull Context context) {
         if (initialized()) return true;
         mContext = context;
-        IBinder binder = startProcess(new ComponentName(mContext.getPackageName(), NewProcessImpl.class.getName()));
+
+        // 启动一个新的Process，并返回一个Android的IBinder，方便进行远程进程管理
+        IBinder binder = isolatedServiceBinder(new ComponentName(mContext.getPackageName(), ProcessManager.class.getName()));
         if (binder == null) return false;
-        mNewProcess = INewProcess.Stub.asInterface(binder);
+        mManager = IProcessManager.Stub.asInterface(binder);
+
         try {
             binder.linkToDeath(() -> {
-                if (mNewProcess == null || mNewProcess.asBinder() != binder) return;
-                mNewProcess = null;
+                if (mManager == null || mManager.asBinder() != binder) return;
+                mManager = null;
             }, 0);
         } catch (RemoteException e) {
             e.printStackTrace();
@@ -107,15 +111,15 @@ public abstract class AppProcess implements Closeable {
     }
 
     public boolean initialized() {
-        return mContext != null && mNewProcess != null && mNewProcess.asBinder().isBinderAlive();
+        return mContext != null && mManager != null && mManager.asBinder().isBinderAlive();
     }
 
     @Override
     public void close() {
         mContext = null;
-        if (mNewProcess == null || !mNewProcess.asBinder().pingBinder()) return;
+        if (mManager == null || !mManager.asBinder().pingBinder()) return;
         try {
-            mNewProcess.exit(0);
+            mManager.exit(0);
         } catch (RuntimeException rethrown) {
             throw rethrown;
         } catch (Exception ignored) {
@@ -129,22 +133,22 @@ public abstract class AppProcess implements Closeable {
         return remoteProcess(params.getCmdList(), params.getEnv(), params.getDirectory());
     }
 
-    private @NonNull INewProcess requireNewProcess() {
+    private @NonNull IProcessManager requireManager() {
         if (!initialized()) throw new IllegalStateException("please call init() first.");
-        return mNewProcess;
+        return mManager;
     }
 
     public boolean remoteTransact(IBinder binder, int code, Parcel data, Parcel reply, int flags) {
-        return remoteTransact(requireNewProcess(), binder, code, data, reply, flags);
+        return remoteTransact(requireManager(), binder, code, data, reply, flags);
     }
 
     public IBinder binderWrapper(IBinder binder) {
-        return binderWrapper(requireNewProcess(), binder);
+        return binderWrapper(requireManager(), binder);
     }
 
     public Process remoteProcess(@NonNull List<String> cmdList, @Nullable Map<String, String> env, @Nullable String directory) {
         try {
-            return new RemoteProcess(requireNewProcess().remoteProcess(cmdList, env, directory));
+            return new RemoteProcess(requireManager().remoteProcess(cmdList, env, directory));
         } catch (RemoteException e) {
             throw new RuntimeException(e);
         }
@@ -152,7 +156,7 @@ public abstract class AppProcess implements Closeable {
 
     public IBinder serviceBinder(ComponentName componentName) {
         try {
-            return requireNewProcess().serviceBinder(componentName).getBinder();
+            return requireManager().serviceBinder(componentName).getBinder();
         } catch (RemoteException e) {
             throw new RuntimeException(e);
         }
@@ -167,17 +171,17 @@ public abstract class AppProcess implements Closeable {
         return lock;
     }
 
-    public IBinder startProcess(@NonNull ComponentName componentName, boolean useCache) {
-        if (!useCache) startProcessUnchecked(componentName);
-        return startProcess(componentName);
+    public IBinder isolatedServiceBinder(@NonNull ComponentName componentName, boolean useCache) {
+        if (!useCache) isolatedServiceBinderUnchecked(componentName);
+        return isolatedServiceBinder(componentName);
     }
 
-    public IBinder startProcess(@NonNull ComponentName componentName) {
+    public IBinder isolatedServiceBinder(@NonNull ComponentName componentName) {
         String token = componentName.flattenToString();
         synchronized (buildLock(token)) {
             IBinder existsBinder = mChildProcess.get(token);
             if (existsBinder != null) return existsBinder;
-            final IBinder binder = startProcessUnchecked(componentName);
+            final IBinder binder = isolatedServiceBinderUnchecked(componentName);
             if (binder == null) return null;
             mChildProcess.put(token, binder);
             try {
@@ -193,7 +197,7 @@ public abstract class AppProcess implements Closeable {
         }
     }
 
-    private IBinder startProcessUnchecked(@NonNull ComponentName componentName) {
+    private IBinder isolatedServiceBinderUnchecked(@NonNull ComponentName componentName) {
         return NewProcessReceiver.start(mContext, this, componentName);
     }
 
