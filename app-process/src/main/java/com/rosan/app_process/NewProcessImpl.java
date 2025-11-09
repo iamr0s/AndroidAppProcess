@@ -1,5 +1,7 @@
 package com.rosan.app_process;
 
+import android.content.ComponentName;
+import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.os.IBinder;
 import android.os.Parcel;
@@ -9,6 +11,7 @@ import androidx.annotation.Keep;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.Map;
 
@@ -42,6 +45,17 @@ public class NewProcessImpl extends INewProcess.Stub {
         try {
             return new RemoteProcessImpl(builder.start());
         } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @Override
+    public ParcelableBinder serviceBinder(ComponentName componentName) {
+        try {
+            return new ParcelableBinder(NewProcess.createBinder(componentName));
+        } catch (PackageManager.NameNotFoundException | NoSuchFieldException |
+                 InvocationTargetException | NoSuchMethodException | IllegalAccessException |
+                 ClassNotFoundException e) {
             throw new IllegalStateException(e);
         }
     }

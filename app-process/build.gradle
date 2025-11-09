@@ -45,6 +45,12 @@ dependencies {
     implementation(libs.hiddenapibypass)
 }
 
+afterEvaluate {
+    tasks.named('sourceReleaseJar', Jar) {
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
+}
+
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs << "-Xlint:deprecation" << "-Xlint:unchecked"
 }

@@ -71,7 +71,11 @@ public class NewProcess {
         Looper.loop();
     }
 
-    public static IBinder createBinder(ComponentName componentName) throws PackageManager.NameNotFoundException, NoSuchFieldException, NoSuchMethodException, ClassNotFoundException {
+    public static IBinder createBinder(ComponentName componentName) throws PackageManager.NameNotFoundException, NoSuchFieldException, InvocationTargetException, NoSuchMethodException, IllegalAccessException, ClassNotFoundException {
+        return createBinder(getUIDContext(), componentName);
+    }
+
+    public static IBinder createBinder(Context context, ComponentName componentName) throws PackageManager.NameNotFoundException, ClassNotFoundException {
         Context packageContext = getSystemContext().createPackageContext(componentName.getPackageName(), Context.CONTEXT_IGNORE_SECURITY | Context.CONTEXT_INCLUDE_CODE);
         Class<?> clazz = packageContext.getClassLoader().loadClass(componentName.getClassName());
         Constructor<?> constructor = null;
@@ -81,7 +85,7 @@ public class NewProcess {
         }
         Object result;
         try {
-            result = constructor != null ? constructor.newInstance(getUIDContext()) : clazz.newInstance();
+            result = constructor != null ? constructor.newInstance(context) : clazz.newInstance();
         } catch (IllegalAccessException | InstantiationException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
