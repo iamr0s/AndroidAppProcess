@@ -24,11 +24,11 @@ import java.util.Objects;
 import java.util.concurrent.Callable;
 
 public abstract class AppProcess implements Closeable {
-    private Context mContext = null;
+    protected Context mContext = null;
 
-    private IProcessManager mManager = null;
+    protected IProcessManager mManager = null;
 
-    private final Map<String, IBinder> mChildProcess = new HashMap<>();
+    protected final Map<String, IBinder> mChildProcess = new HashMap<>();
 
     public static ProcessParams generateProcessParams(@NonNull String classPath, @NonNull String entryClassName, @NonNull List<String> args) {
         List<String> cmdList = new ArrayList<>();
@@ -94,20 +94,27 @@ public abstract class AppProcess implements Closeable {
         if (initialized()) return true;
         mContext = context;
 
-        // 启动一个新的Process，并返回一个Android的IBinder，方便进行远程进程管理
-        IBinder binder = isolatedServiceBinder(new ComponentName(mContext.getPackageName(), ProcessManager.class.getName()));
-        if (binder == null) return false;
-        mManager = IProcessManager.Stub.asInterface(binder);
+        IProcessManager manager = newManager();
+        if (manager == null) return false;
 
         try {
-            binder.linkToDeath(() -> {
-                if (mManager == null || mManager.asBinder() != binder) return;
+            manager.asBinder().linkToDeath(() -> {
+                if (manager.asBinder() != mManager.asBinder()) return;
                 mManager = null;
             }, 0);
         } catch (RemoteException e) {
             e.printStackTrace();
         }
-        return initialized();
+        return init();
+    }
+
+    /*
+     * 启动一个新的Process，并返回一个Android的IBinder，方便进行远程进程管理
+     * */
+    protected @Nullable IProcessManager newManager() {
+        IBinder binder = isolatedServiceBinder(new ComponentName(mContext.getPackageName(), ProcessManager.class.getName()));
+        if (binder == null) return null;
+        return IProcessManager.Stub.asInterface(binder);
     }
 
     public boolean initialized() {
@@ -124,9 +131,22 @@ public abstract class AppProcess implements Closeable {
             throw rethrown;
         } catch (Exception ignored) {
         }
+        // 无需在此处设置为null，因为已经在Binder::linkToDeath中实现了此操作，当ProcessManager::exit时，会调用到此方法
+//        mManager = null;
     }
 
-    protected abstract @NonNull Process newProcess(@NonNull ProcessParams params) throws IOException;
+    /*
+     * 根据传来的进程参数启动一个Process
+     * */
+    protected @NonNull Process newProcess(@NonNull ProcessParams params) throws IOException {
+        List<String> cmdList = params.getCmdList();
+        Map<String, String> env = params.getEnv();
+        String directory = params.getDirectory();
+        ProcessBuilder builder = new ProcessBuilder().command(cmdList);
+        if (directory != null) builder = builder.directory(new File(directory));
+        if (env != null) builder.environment().putAll(env);
+        return builder.start();
+    }
 
     private @NonNull Process startProcess(@NonNull ProcessParams params) throws IOException {
         if (!initialized()) return newProcess(params);
@@ -202,16 +222,21 @@ public abstract class AppProcess implements Closeable {
     }
 
     public static class Default extends AppProcess {
-        @NonNull
+    }
+
+    /*
+     * 不在新进程启动，而是直接在当前进程中进行
+     * */
+    public static class None extends AppProcess {
+        @Nullable
         @Override
-        protected Process newProcess(@NonNull ProcessParams params) throws IOException {
-            List<String> cmdList = params.getCmdList();
-            Map<String, String> env = params.getEnv();
-            String directory = params.getDirectory();
-            ProcessBuilder builder = new ProcessBuilder().command(cmdList);
-            if (directory != null) builder = builder.directory(new File(directory));
-            if (env != null) builder.environment().putAll(env);
-            return builder.start();
+        protected IProcessManager newManager() {
+            return new ProcessManager();
+        }
+
+        @Override
+        public void close() {
+            mManager = null;
         }
     }
 
