@@ -116,8 +116,9 @@ public abstract class AppProcess implements Closeable {
         if (mNewProcess == null || !mNewProcess.asBinder().pingBinder()) return;
         try {
             mNewProcess.exit(0);
-        } catch (RemoteException e) {
-            e.printStackTrace();
+        } catch (RuntimeException rethrown) {
+            throw rethrown;
+        } catch (Exception ignored) {
         }
     }
 
