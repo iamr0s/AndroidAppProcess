@@ -150,6 +150,14 @@ public abstract class AppProcess implements Closeable {
         }
     }
 
+    public IBinder serviceBinder(ComponentName componentName) {
+        try {
+            return requireNewProcess().serviceBinder(componentName).getBinder();
+        } catch (RemoteException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private final Map<String, Object> locks = new HashMap<>();
 
     private synchronized Object buildLock(String token) {
