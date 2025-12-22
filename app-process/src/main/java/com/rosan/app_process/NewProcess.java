@@ -40,6 +40,12 @@ public class NewProcess {
 
     @Keep
     public static void main(String[] args) throws Throwable {
+        // Start the orphan watchdog immediately.
+        // This ensures that if the parent process (Main App) dies during the
+        // initialization phase (before Binder is ready), this process
+        // detects the broken pipe (STDIN) and kills itself to prevent zombies.
+        startOrphanWatchdog();
+
         try {
             innerMain(args);
         } catch (Throwable e) {
@@ -47,6 +53,34 @@ public class NewProcess {
             Log.e(TAG, "main", e);
             throw e;
         }
+    }
+
+    /**
+     * Starts a daemon thread to monitor the Standard Input (STDIN).
+     * In a shell-spawned process structure (App -> su -> sh -> app_process),
+     * STDIN is a pipe connected to the parent. If the parent dies, the pipe is closed.
+     */
+    private static void startOrphanWatchdog() {
+        Thread watchdog = new Thread(() -> {
+            try {
+                // Blocking read. This will wait indefinitely as long as the parent is alive.
+                // If the parent dies, the pipe closes, and read() returns -1 (EOF).
+                int result = System.in.read();
+                Log.w(TAG, "Watchdog: Stdin EOF detected (" + result + "). Parent died. Exiting...");
+            } catch (Exception e) {
+                // Any IO exception usually means the pipe is broken.
+                Log.w(TAG, "Watchdog: Stdin broken. Parent likely died.", e);
+            } finally {
+                // Force kill the current process to clean up.
+                Process.killProcess(Process.myPid());
+                System.exit(0);
+            }
+        });
+
+        // Set as daemon so it doesn't prevent normal JVM shutdown (though typically we loop forever).
+        watchdog.setDaemon(true);
+        watchdog.setName("OrphanWatchdog");
+        watchdog.start();
     }
 
     private static void innerMain(String[] args) throws Throwable {
