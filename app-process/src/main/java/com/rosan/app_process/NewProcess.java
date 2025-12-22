@@ -65,7 +65,9 @@ public class NewProcess {
             try {
                 // Blocking read. This will wait indefinitely as long as the parent is alive.
                 // If the parent dies, the pipe closes, and read() returns -1 (EOF).
-                int result = System.in.read();
+                int result;
+                while ((result = System.in.read()) != -1) {
+                }
                 Log.w(TAG, "Watchdog: Stdin EOF detected (" + result + "). Parent died. Exiting...");
             } catch (Exception e) {
                 // Any IO exception usually means the pipe is broken.
