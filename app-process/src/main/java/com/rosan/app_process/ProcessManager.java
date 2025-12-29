@@ -1,6 +1,7 @@
 package com.rosan.app_process;
 
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.os.IBinder;
@@ -99,8 +100,17 @@ public class ProcessManager extends IProcessManager.Stub {
 
     @Override
     public ParcelableBinder serviceBinder(ComponentName componentName) {
+        return serviceBinder(null, null, componentName);
+    }
+
+    public ParcelableBinder serviceBinder(@Nullable Context context, @Nullable ClassLoader classLoader, ComponentName componentName) {
         try {
-            IBinder iBinder = NewProcess.createBinder(componentName);
+            IBinder iBinder;
+            if (context != null && classLoader != null)
+                iBinder = NewProcess.createBinder(context, classLoader, componentName.getClassName());
+            else if (context != null)
+                iBinder = NewProcess.createBinder(context, componentName);
+            else iBinder = NewProcess.createBinder(componentName);
 
             synchronized (mServiceIBinders) {
                 mServiceIBinders.add(iBinder);
@@ -113,6 +123,7 @@ public class ProcessManager extends IProcessManager.Stub {
             throw new IllegalStateException(e);
         }
     }
+
 
     @Override
     public void linkDeathTo(@Nullable ParcelableBinder pBinder) throws RemoteException {
