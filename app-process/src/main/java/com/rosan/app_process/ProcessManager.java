@@ -4,6 +4,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Binder;
+import android.os.Build;
 import android.os.IBinder;
 import android.os.Parcel;
 import android.os.RemoteException;
@@ -21,7 +22,7 @@ import java.util.Objects;
 
 public class ProcessManager extends IProcessManager.Stub {
     // transact sub service binder before destroy
-    public static int TRANSACT_ON_DESTROY_CODE = 0x010000EE; // 16777454
+    public static int TRANSACT_ON_DESTROY_CODE = 0x00FF0000; // 16711680
 
     private final List<Process> mServiceProcesses = new ArrayList<>();
 
@@ -49,7 +50,11 @@ public class ProcessManager extends IProcessManager.Stub {
             synchronized (mServiceIBinders) {
                 for (Process process : mServiceProcesses) {
                     try {
-                        process.destroyForcibly();
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            process.destroyForcibly();
+                        } else {
+                            process.destroy();
+                        }
                     } catch (Throwable ignored) {
                     }
                 }
