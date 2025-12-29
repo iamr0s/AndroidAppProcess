@@ -11,4 +11,6 @@ interface IProcessManager {
     IRemoteProcess remoteProcess(in List<String> cmdList, in Map<String, String> env, in String directory) = 3;
 
     ParcelableBinder serviceBinder(in ComponentName componentName) = 4;
+
+    void linkDeathTo(in ParcelableBinder pBinder) = 5;
 }

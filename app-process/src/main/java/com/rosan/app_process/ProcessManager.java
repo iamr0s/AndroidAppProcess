@@ -8,14 +8,35 @@ import android.os.Parcel;
 import android.os.RemoteException;
 
 import androidx.annotation.Keep;
+import androidx.annotation.Nullable;
 
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class ProcessManager extends IProcessManager.Stub {
+    // transact sub service binder before destroy
+    public static int TRANSACT_ON_DESTROY_CODE = 0x010000EE; // 16777454
+
+    private final List<Process> mServiceProcesses = new ArrayList<>();
+
+    private final List<IBinder> mServiceIBinders = new ArrayList<>();
+
+    private IBinder mClientBinder;
+
+    private final DeathRecipient mClientDeadRecipient = new DeathRecipient() {
+        @Override
+        public void binderDied() {
+            synchronized (this) {
+                exit(0);
+            }
+        }
+    };
+
     @Keep
     public ProcessManager() {
         super();
@@ -23,10 +44,32 @@ public class ProcessManager extends IProcessManager.Stub {
 
     @Override
     public void exit(int code) {
-        System.exit(code);
+        synchronized (mServiceProcesses) {
+            synchronized (mServiceIBinders) {
+                for (Process process : mServiceProcesses) {
+                    try {
+                        process.destroyForcibly();
+                    } catch (Throwable ignored) {
+                    }
+                }
+                for (IBinder iBinder : mServiceIBinders) {
+                    Parcel data = Parcel.obtain();
+                    Parcel reply = Parcel.obtain();
+                    try {
+                        iBinder.transact(TRANSACT_ON_DESTROY_CODE, data, reply, Binder.FLAG_ONEWAY);
+                    } catch (Throwable ignored) {
+                    } finally {
+                        data.recycle();
+                        reply.recycle();
+                    }
+                }
+                System.exit(code);
+            }
+        }
     }
 
-    private boolean targetTransact(IBinder binder, int code, Parcel data, Parcel reply, int flags) throws RemoteException {
+    private boolean targetTransact(IBinder binder, int code, Parcel data, Parcel reply, int flags) throws
+            RemoteException {
         try {
             return AppProcess.binderWithCleanCallingIdentity(() -> binder.transact(code, data, reply, flags));
         } catch (RemoteException e) {
@@ -41,9 +84,14 @@ public class ProcessManager extends IProcessManager.Stub {
         ProcessBuilder builder = new ProcessBuilder().command(cmdList);
         if (directory != null) builder = builder.directory(new File(directory));
         if (env != null) builder.environment().putAll(env);
-        File file = null;
         try {
-            return new RemoteProcessImpl(builder.start());
+            Process process = builder.start();
+
+            synchronized (mServiceProcesses) {
+                mServiceProcesses.add(process);
+            }
+
+            return new RemoteProcessImpl(process);
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
@@ -52,7 +100,13 @@ public class ProcessManager extends IProcessManager.Stub {
     @Override
     public ParcelableBinder serviceBinder(ComponentName componentName) {
         try {
-            return new ParcelableBinder(NewProcess.createBinder(componentName));
+            IBinder iBinder = NewProcess.createBinder(componentName);
+
+            synchronized (mServiceIBinders) {
+                mServiceIBinders.add(iBinder);
+            }
+
+            return new ParcelableBinder(iBinder);
         } catch (PackageManager.NameNotFoundException | NoSuchFieldException |
                  InvocationTargetException | NoSuchMethodException | IllegalAccessException |
                  ClassNotFoundException e) {
@@ -61,12 +115,27 @@ public class ProcessManager extends IProcessManager.Stub {
     }
 
     @Override
-    public boolean onTransact(int code, Parcel data, Parcel reply, int flags) throws RemoteException {
+    public void linkDeathTo(@Nullable ParcelableBinder pBinder) throws RemoteException {
+        synchronized (this) {
+            try {
+                if (mClientBinder != null) mClientBinder.unlinkToDeath(mClientDeadRecipient, 0);
+            } catch (Throwable ignored) {
+            }
+            if (pBinder == null || pBinder.getBinder() == null) return;
+            IBinder iBinder = pBinder.getBinder();
+            iBinder.linkToDeath(mClientDeadRecipient, 0);
+            mClientBinder = iBinder;
+        }
+    }
+
+    @Override
+    public boolean onTransact(int code, Parcel data, Parcel reply, int flags) throws
+            RemoteException {
         if (code != Binder.FIRST_CALL_TRANSACTION + 2)
             return super.onTransact(code, data, reply, flags);
         Parcel targetData = Parcel.obtain();
         try {
-            data.enforceInterface(this.asBinder().getInterfaceDescriptor());
+            data.enforceInterface(Objects.requireNonNull(this.asBinder().getInterfaceDescriptor()));
             IBinder binder = data.readStrongBinder();
             int targetCode = data.readInt();
             int targetFlags = data.readInt();

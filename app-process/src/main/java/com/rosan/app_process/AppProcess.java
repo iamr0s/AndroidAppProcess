@@ -70,6 +70,19 @@ public abstract class AppProcess implements Closeable {
         }
     }
 
+    public static void linkDeathToThis(IProcessManager serviceManager) {
+        IClientManager clientManager = new ClientManager();
+        linkDeathTo(serviceManager, clientManager.asBinder());
+    }
+
+    public static void linkDeathTo(IProcessManager serviceManager, IBinder binder) {
+        try {
+            serviceManager.linkDeathTo(new ParcelableBinder(binder));
+        } catch (RemoteException e) {
+            throw new RuntimeException((e));
+        }
+    }
+
     public @NonNull Process start(@NonNull String classPath, @NonNull String entryClassName, @NonNull List<String> args) throws IOException {
         return startProcess(generateProcessParams(classPath, entryClassName, args));
     }
@@ -115,7 +128,10 @@ public abstract class AppProcess implements Closeable {
     protected @Nullable IProcessManager newManager() {
         IBinder binder = isolatedServiceBinder(new ComponentName(mContext.getPackageName(), ProcessManager.class.getName()));
         if (binder == null) return null;
-        return IProcessManager.Stub.asInterface(binder);
+
+        IProcessManager serviceManager = IProcessManager.Stub.asInterface(binder);
+        linkDeathToThis(serviceManager);
+        return serviceManager;
     }
 
     public boolean initialized() {
@@ -181,6 +197,15 @@ public abstract class AppProcess implements Closeable {
         } catch (RemoteException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void linkDeathToThis() {
+        IClientManager clientManager = new ClientManager();
+        linkDeathTo(clientManager.asBinder());
+    }
+
+    public void linkDeathTo(IBinder binder) {
+        linkDeathTo(requireManager(), binder);
     }
 
     private final Map<String, Object> locks = new HashMap<>();
