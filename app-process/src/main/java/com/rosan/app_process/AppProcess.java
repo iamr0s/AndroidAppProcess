@@ -75,9 +75,10 @@ public abstract class AppProcess implements Closeable {
         linkDeathTo(serviceManager, clientManager.asBinder());
     }
 
-    public static void linkDeathTo(IProcessManager serviceManager, IBinder binder) {
+    public static void linkDeathTo(IProcessManager serviceManager, @Nullable IBinder binder) {
         try {
-            serviceManager.linkDeathTo(new ParcelableBinder(binder));
+            ParcelableBinder pBinder = binder == null ? null : new ParcelableBinder(binder);
+            serviceManager.linkDeathTo(pBinder);
         } catch (RemoteException e) {
             throw new RuntimeException((e));
         }
@@ -204,7 +205,7 @@ public abstract class AppProcess implements Closeable {
         linkDeathTo(clientManager.asBinder());
     }
 
-    public void linkDeathTo(IBinder binder) {
+    public void linkDeathTo(@Nullable IBinder binder) {
         linkDeathTo(requireManager(), binder);
     }
 
