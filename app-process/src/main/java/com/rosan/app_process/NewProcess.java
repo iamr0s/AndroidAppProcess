@@ -77,7 +77,12 @@ public class NewProcess {
 
     public static IBinder createBinder(Context context, ComponentName componentName) throws PackageManager.NameNotFoundException, ClassNotFoundException {
         Context packageContext = getSystemContext().createPackageContext(componentName.getPackageName(), Context.CONTEXT_IGNORE_SECURITY | Context.CONTEXT_INCLUDE_CODE);
-        Class<?> clazz = packageContext.getClassLoader().loadClass(componentName.getClassName());
+        ClassLoader classLoader = packageContext.getClassLoader();
+        return createBinder(context, classLoader, componentName.getClassName());
+    }
+
+    public static IBinder createBinder(Context context, ClassLoader classLoader, String className) throws ClassNotFoundException {
+        Class<?> clazz = classLoader.loadClass(className);
         Constructor<?> constructor = null;
         try {
             constructor = clazz.getDeclaredConstructor(Context.class);
