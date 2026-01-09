@@ -7,6 +7,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.IBinder;
 
 import androidx.annotation.NonNull;
@@ -14,74 +16,58 @@ import androidx.annotation.NonNull;
 import java.io.IOException;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Exchanger;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.TimeoutException;
 
 abstract class NewProcessReceiver extends BroadcastReceiver {
-    private static boolean waitFor(Process process, long timeout, TimeUnit unit) throws InterruptedException {
-        long startTime = System.nanoTime();
-        long rem = unit.toNanos(timeout);
-
-        do {
-            try {
-                process.exitValue();
-                return true;
-            } catch (IllegalArgumentException ex) {
-                if (rem > 0)
-                    Thread.sleep(
-                            Math.min(TimeUnit.NANOSECONDS.toMillis(rem) + 1, 100));
-            }
-            rem = unit.toNanos(timeout) - (System.nanoTime() - startTime);
-        } while (rem > 0);
-        return false;
-    }
-
     public static IBinder start(Context context, AppProcess appProcess, ComponentName componentName) {
-        String token = UUID.randomUUID().toString();
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(ACTION_SEND_NEW_PROCESS);
-        LinkedBlockingQueue<AtomicReference<NewProcessResult>> queue = new LinkedBlockingQueue<>();
-        BroadcastReceiver receiver = new NewProcessReceiver() {
+        final String token = UUID.randomUUID().toString();
+
+        final Exchanger<IBinder> exchanger = new Exchanger<>();
+
+        HandlerThread worker = new HandlerThread("IPCWorker");
+        worker.start();
+
+        BroadcastReceiver receiver = new BroadcastReceiver() {
             @Override
-            void onReceive(NewProcessResult result) {
-                if (!result.getToken().equals(token)) return;
-                queue.offer(new AtomicReference<>(result));
+            public void onReceive(Context context, Intent intent) {
+                if (token.equals(intent.getStringExtra(NewProcessReceiver.EXTRA_TOKEN))) {
+                    IBinder binder = intent.getExtras().getBinder(NewProcessReceiver.EXTRA_NEW_PROCESS);
+                    try {
+                        exchanger.exchange(binder);
+                    } catch (InterruptedException ignored) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
             }
         };
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-            context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED);
-        else context.registerReceiver(receiver, filter);
-        ExecutorService executorService = Executors.newCachedThreadPool();
-        Future<AtomicReference<NewProcessResult>> future = executorService.submit(queue::take);
+
         try {
-            Process process = appProcess.start(context.getPackageCodePath(), NewProcess.class, new String[]{
-                    String.format("--package=%s", context.getPackageName()),
-                    String.format("--token=%s", token),
-                    String.format("--component=%s", componentName.flattenToString())
+            IntentFilter filter = new IntentFilter(ACTION_SEND_NEW_PROCESS);
+            Handler handler = new Handler(worker.getLooper());
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(receiver, filter, null, handler, Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                context.registerReceiver(receiver, filter, null, handler);
+            }
+
+            appProcess.start(context.getPackageCodePath(), NewProcess.class, new String[]{
+                    "--package=" + context.getPackageName(),
+                    "--token=" + token,
+                    "--component=" + componentName.flattenToString()
             });
-            executorService.execute(() -> {
-                try {
-                    waitFor(process, 15, TimeUnit.SECONDS);
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
-                queue.offer(new AtomicReference<>());
-            });
-            NewProcessResult result = future.get().get();
-            IBinder binder = result != null ? result.getBinder() : null;
-            if (binder == null) process.destroy();
-            return binder;
-        } catch (IOException | ExecutionException | InterruptedException e) {
-            e.printStackTrace();
+
+            return exchanger.exchange(null, 15, TimeUnit.SECONDS);
+
+        } catch (TimeoutException | InterruptedException | IOException e) {
             return null;
         } finally {
-            context.unregisterReceiver(receiver);
-            executorService.shutdown();
+            try {
+                context.unregisterReceiver(receiver);
+            } catch (Exception ignored) {
+            }
+            worker.quitSafely();
         }
     }
 
