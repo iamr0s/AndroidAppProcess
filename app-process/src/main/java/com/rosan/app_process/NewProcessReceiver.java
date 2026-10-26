@@ -1,5 +1,6 @@
 package com.rosan.app_process;
 
+import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 abstract class NewProcessReceiver extends BroadcastReceiver {
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     public static IBinder start(Context context, AppProcess appProcess, ComponentName componentName) {
         final String token = UUID.randomUUID().toString();
 

@@ -1,5 +1,6 @@
 package android.app;
 
+import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentResolver;
@@ -33,6 +34,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+@SuppressLint("WrongConstant")
 public class ContextImpl extends Context {
     @Override
     public AssetManager getAssets() {

@@ -28,6 +28,11 @@ android {
         aidl = true
     }
 
+    lint {
+        disable += "NewerVersionAvailable"
+        disable += "GradleDependency"
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_21
         targetCompatibility JavaVersion.VERSION_21
@@ -67,7 +72,7 @@ publishing {
 
             group = rootProject.ext.GROUP_ID
             artifactId = rootProject.ext.ARTIFACT_ID
-            version = ARTIFACT_VERSION
+            version = rootProject.ext.ARTIFACT_VERSION
 
             pom {
                 name = rootProject.ext.POM_NAME

@@ -105,6 +105,7 @@ public class NewProcess {
         return Arrays.asList(packageNames);
     }
 
+    @SuppressLint({"DiscouragedPrivateApi", "PrivateApi", "SoonBlockedPrivateApi"})
     private static void preloadSystemAssets() {
         if (Build.VERSION.SDK_INT != Build.VERSION_CODES.P) return;
         try {
@@ -149,6 +150,7 @@ public class NewProcess {
         }
     }
 
+    @SuppressLint({"DiscouragedPrivateApi", "PrivateApi"})
     private static ActivityThread getActivityThread() {
         if (mActivityThread != null) return mActivityThread;
         if (Looper.getMainLooper() == null) Looper.prepareMainLooper();

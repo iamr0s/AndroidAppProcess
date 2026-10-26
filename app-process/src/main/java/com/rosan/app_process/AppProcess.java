@@ -213,7 +213,14 @@ public abstract class AppProcess implements Closeable {
     private final Map<String, Object> locks = new ConcurrentHashMap<>();
 
     private Object buildLock(String token) {
-        return locks.computeIfAbsent(token, key -> new Object());
+        synchronized (locks) {
+            Object lock = locks.get(token);
+            if (lock == null) {
+                lock = new Object();
+                locks.put(token, lock);
+            }
+            return lock;
+        }
     }
 
     public IBinder isolatedServiceBinder(ComponentName componentName, boolean useCache) {
