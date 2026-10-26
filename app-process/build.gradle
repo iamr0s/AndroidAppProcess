@@ -65,29 +65,29 @@ publishing {
                 from components.findByName('release')
             }
 
-            group = 'io.github.iamr0s'
-            artifactId = 'AndroidAppProcess'
+            group = rootProject.ext.GROUP_ID
+            artifactId = rootProject.ext.ARTIFACT_ID
             version = ARTIFACT_VERSION
 
             pom {
-                name = 'AndroidAppProcess'
-                description = 'Run code in an app_process child process'
-                inceptionYear = '2024'
-                url = 'https://github.com/iamr0s/AndroidAppProcess'
+                name = rootProject.ext.POM_NAME
+                description = rootProject.ext.POM_DESCRIPTION
+                inceptionYear = rootProject.ext.POM_INCEPTION_YEAR
+                url = rootProject.ext.POM_URL
                 scm {
-                    url = 'https://github.com/iamr0s/AndroidAppProcess'
-                    connection = 'scm:git:https://github.com/iamr0s/AndroidAppProcess.git'
+                    url = rootProject.ext.POM_SCM_URL
+                    connection = rootProject.ext.POM_SCM_CONNECTION
                 }
                 licenses {
                     license {
-                        name = 'Apache-2.0'
-                        url = 'https://www.apache.org/licenses/LICENSE-2.0'
+                        name = rootProject.ext.POM_LICENSE_NAME
+                        url = rootProject.ext.POM_LICENSE_URL
                     }
                 }
                 developers {
                     developer {
-                        name = 'iamr0s'
-                        url = 'https://github.com/iamr0s'
+                        name = rootProject.ext.POM_DEVELOPER_NAME
+                        url = rootProject.ext.POM_DEVELOPER_URL
                     }
                 }
             }

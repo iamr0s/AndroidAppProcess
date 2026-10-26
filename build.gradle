@@ -1,6 +1,19 @@
 ext {
     MIN_SDK = 19
-    TARGET_SDK = 37
+    TARGET_SDK = 36
 
     ARTIFACT_VERSION = "1.5.0"
+
+    GROUP_ID = "io.github.iamr0s"
+    ARTIFACT_ID = "AndroidAppProcess"
+    POM_NAME = "AndroidAppProcess"
+    POM_DESCRIPTION = "Run code in an app_process child process"
+    POM_INCEPTION_YEAR = "2024"
+    POM_URL = "https://github.com/iamr0s/AndroidAppProcess"
+    POM_SCM_URL = "https://github.com/iamr0s/AndroidAppProcess"
+    POM_SCM_CONNECTION = "scm:git:https://github.com/iamr0s/AndroidAppProcess.git"
+    POM_LICENSE_NAME = "Apache-2.0"
+    POM_LICENSE_URL = "https://www.apache.org/licenses/LICENSE-2.0"
+    POM_DEVELOPER_NAME = "iamr0s"
+    POM_DEVELOPER_URL = "https://github.com/iamr0s"
 }
