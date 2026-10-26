@@ -4,10 +4,10 @@ plugins {
     id "signing"
 }
 
-def publishingProps = new Properties()
-def publishingFile = file("${rootDir}/keystore/publishing.properties")
-if (publishingFile.exists()) {
-    publishingProps.load(publishingFile.newInputStream())
+def signingProps = new Properties()
+def signingFile = file("${rootDir}/keystore/signing.properties")
+if (signingFile.exists()) {
+    signingProps.load(signingFile.newInputStream())
 }
 
 android {
@@ -55,7 +55,7 @@ afterEvaluate {
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.compilerArgs << "-Xlint:deprecation" << "-Xlint:unchecked"
+    //options.compilerArgs << "-Xlint:deprecation" << "-Xlint:unchecked"
 }
 
 publishing {
@@ -65,29 +65,29 @@ publishing {
                 from components.findByName('release')
             }
 
-            group = publishingProps['groupId']
-            artifactId = publishingProps['artifactId']
+            group = 'io.github.iamr0s'
+            artifactId = 'AndroidAppProcess'
             version = ARTIFACT_VERSION
 
             pom {
-                name = publishingProps['pom.name']
-                description = publishingProps['pom.description']
-                inceptionYear = publishingProps['pom.inceptionYear']
-                url = publishingProps['pom.url']
+                name = 'AndroidAppProcess'
+                description = 'Run code in an app_process child process'
+                inceptionYear = '2024'
+                url = 'https://github.com/iamr0s/AndroidAppProcess'
                 scm {
-                    url = publishingProps['pom.scmUrl']
-                    connection = publishingProps['pom.scmConnection']
+                    url = 'https://github.com/iamr0s/AndroidAppProcess'
+                    connection = 'scm:git:https://github.com/iamr0s/AndroidAppProcess.git'
                 }
                 licenses {
                     license {
-                        name = publishingProps['pom.licenceName']
-                        url = publishingProps['pom.licenceUrl']
+                        name = 'Apache-2.0'
+                        url = 'https://www.apache.org/licenses/LICENSE-2.0'
                     }
                 }
                 developers {
                     developer {
-                        name = publishingProps['pom.developerName']
-                        url = publishingProps['pom.developerUrl']
+                        name = 'iamr0s'
+                        url = 'https://github.com/iamr0s'
                     }
                 }
             }
@@ -101,15 +101,15 @@ publishing {
 }
 
 signing {
-    if (publishingFile.exists() && publishingProps['signing.keyId'] != null) {
-        def privateKey = publishingProps['signing.privateKey']
+    if (signingFile.exists() && signingProps['signing.keyId'] != null) {
+        def privateKey = signingProps['signing.privateKey']
         if (privateKey == null) {
-            privateKey = file(publishingProps['signing.secretKeyRingFile']).text
+            privateKey = file(signingProps['signing.secretKeyRingFile']).text
         }
         useInMemoryPgpKeys(
-                publishingProps['signing.keyId'],
+                signingProps['signing.keyId'],
                 privateKey,
-                publishingProps['signing.password']
+                signingProps['signing.password']
         )
         sign publishing.publications
     }

@@ -1,6 +1,6 @@
 ext {
     MIN_SDK = 19
-    TARGET_SDK = 36
+    TARGET_SDK = 37
 
     ARTIFACT_VERSION = "1.5.0"
 }

@@ -14,5 +14,5 @@ agp = "9.4.1"
 agp-lib = { id = "com.android.library", version.ref = "agp" }
 
 [libraries]
-commons-cli = { group = "commons-cli", name = "commons-cli", version = "1.10.0" }
-hiddenapibypass = { group = "org.lsposed.hiddenapibypass", name = "hiddenapibypass", version = "6.1" }
+commons-cli = { group = "commons-cli", name = "commons-cli", version = "1.11.0" }
+hiddenapibypass = { group = "org.lsposed.hiddenapibypass", name = "hiddenapibypass", version = "6.2" }
