@@ -43,10 +43,6 @@ IPackageManager managerWrapper = IPackageManager.Stub.asInterface(binderWrapper)
 managerWrapper.uninstall(...); // will call it in root.
 ```
 
-- More
-
-> See the demo.
-
 ### 3. Close
 
 > You must close the AppProcess after use it.
