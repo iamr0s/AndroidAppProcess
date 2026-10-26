@@ -25,8 +25,6 @@ import android.os.Looper;
 import android.os.UserHandle;
 import android.view.Display;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -151,9 +149,8 @@ public class ContextImpl extends Context {
         return null;
     }
 
-    @Nullable
     @Override
-    public File getExternalFilesDir(@Nullable String type) {
+    public File getExternalFilesDir(String type) {
         return null;
     }
 
@@ -182,7 +179,6 @@ public class ContextImpl extends Context {
         return null;
     }
 
-    @Nullable
     @Override
     public File getExternalCacheDir() {
         return null;
@@ -214,7 +210,7 @@ public class ContextImpl extends Context {
     }
 
     @Override
-    public SQLiteDatabase openOrCreateDatabase(String name, int mode, SQLiteDatabase.CursorFactory factory, @Nullable DatabaseErrorHandler errorHandler) {
+    public SQLiteDatabase openOrCreateDatabase(String name, int mode, SQLiteDatabase.CursorFactory factory, DatabaseErrorHandler errorHandler) {
         return null;
     }
 
@@ -279,7 +275,7 @@ public class ContextImpl extends Context {
     }
 
     @Override
-    public void startActivity(Intent intent, @Nullable Bundle options) {
+    public void startActivity(Intent intent, Bundle options) {
 
     }
 
@@ -294,12 +290,12 @@ public class ContextImpl extends Context {
     }
 
     @Override
-    public void startIntentSender(IntentSender intent, @Nullable Intent fillInIntent, int flagsMask, int flagsValues, int extraFlags) throws IntentSender.SendIntentException {
+    public void startIntentSender(IntentSender intent, Intent fillInIntent, int flagsMask, int flagsValues, int extraFlags) throws IntentSender.SendIntentException {
 
     }
 
     @Override
-    public void startIntentSender(IntentSender intent, @Nullable Intent fillInIntent, int flagsMask, int flagsValues, int extraFlags, @Nullable Bundle options) throws IntentSender.SendIntentException {
+    public void startIntentSender(IntentSender intent, Intent fillInIntent, int flagsMask, int flagsValues, int extraFlags, Bundle options) throws IntentSender.SendIntentException {
 
     }
 
@@ -309,17 +305,17 @@ public class ContextImpl extends Context {
     }
 
     @Override
-    public void sendBroadcast(Intent intent, @Nullable String receiverPermission) {
+    public void sendBroadcast(Intent intent, String receiverPermission) {
 
     }
 
     @Override
-    public void sendOrderedBroadcast(Intent intent, @Nullable String receiverPermission) {
+    public void sendOrderedBroadcast(Intent intent, String receiverPermission) {
 
     }
 
     @Override
-    public void sendOrderedBroadcast(@NonNull Intent intent, @Nullable String receiverPermission, @Nullable BroadcastReceiver resultReceiver, @Nullable Handler scheduler, int initialCode, @Nullable String initialData, @Nullable Bundle initialExtras) {
+    public void sendOrderedBroadcast(Intent intent, String receiverPermission, BroadcastReceiver resultReceiver, Handler scheduler, int initialCode, String initialData, Bundle initialExtras) {
 
     }
 
@@ -329,12 +325,12 @@ public class ContextImpl extends Context {
     }
 
     @Override
-    public void sendBroadcastAsUser(Intent intent, UserHandle user, @Nullable String receiverPermission) {
+    public void sendBroadcastAsUser(Intent intent, UserHandle user, String receiverPermission) {
 
     }
 
     @Override
-    public void sendOrderedBroadcastAsUser(Intent intent, UserHandle user, @Nullable String receiverPermission, BroadcastReceiver resultReceiver, @Nullable Handler scheduler, int initialCode, @Nullable String initialData, @Nullable Bundle initialExtras) {
+    public void sendOrderedBroadcastAsUser(Intent intent, UserHandle user, String receiverPermission, BroadcastReceiver resultReceiver, Handler scheduler, int initialCode, String initialData, Bundle initialExtras) {
 
     }
 
@@ -344,7 +340,7 @@ public class ContextImpl extends Context {
     }
 
     @Override
-    public void sendStickyOrderedBroadcast(Intent intent, BroadcastReceiver resultReceiver, @Nullable Handler scheduler, int initialCode, @Nullable String initialData, @Nullable Bundle initialExtras) {
+    public void sendStickyOrderedBroadcast(Intent intent, BroadcastReceiver resultReceiver, Handler scheduler, int initialCode, String initialData, Bundle initialExtras) {
 
     }
 
@@ -359,7 +355,7 @@ public class ContextImpl extends Context {
     }
 
     @Override
-    public void sendStickyOrderedBroadcastAsUser(Intent intent, UserHandle user, BroadcastReceiver resultReceiver, @Nullable Handler scheduler, int initialCode, @Nullable String initialData, @Nullable Bundle initialExtras) {
+    public void sendStickyOrderedBroadcastAsUser(Intent intent, UserHandle user, BroadcastReceiver resultReceiver, Handler scheduler, int initialCode, String initialData, Bundle initialExtras) {
 
     }
 
@@ -368,27 +364,23 @@ public class ContextImpl extends Context {
 
     }
 
-    @Nullable
     @Override
-    public Intent registerReceiver(@Nullable BroadcastReceiver receiver, IntentFilter filter) {
+    public Intent registerReceiver(BroadcastReceiver receiver, IntentFilter filter) {
         return null;
     }
 
-    @Nullable
     @Override
-    public Intent registerReceiver(@Nullable BroadcastReceiver receiver, IntentFilter filter, int flags) {
+    public Intent registerReceiver(BroadcastReceiver receiver, IntentFilter filter, int flags) {
         return null;
     }
 
-    @Nullable
     @Override
-    public Intent registerReceiver(BroadcastReceiver receiver, IntentFilter filter, @Nullable String broadcastPermission, @Nullable Handler scheduler) {
+    public Intent registerReceiver(BroadcastReceiver receiver, IntentFilter filter, String broadcastPermission, Handler scheduler) {
         return null;
     }
 
-    @Nullable
     @Override
-    public Intent registerReceiver(BroadcastReceiver receiver, IntentFilter filter, @Nullable String broadcastPermission, @Nullable Handler scheduler, int flags) {
+    public Intent registerReceiver(BroadcastReceiver receiver, IntentFilter filter, String broadcastPermission, Handler scheduler, int flags) {
         return null;
     }
 
@@ -397,13 +389,11 @@ public class ContextImpl extends Context {
 
     }
 
-    @Nullable
     @Override
     public ComponentName startService(Intent service) {
         return null;
     }
 
-    @Nullable
     @Override
     public ComponentName startForegroundService(Intent service) {
         return null;
@@ -415,63 +405,62 @@ public class ContextImpl extends Context {
     }
 
     @Override
-    public boolean bindService(Intent service, @NonNull ServiceConnection conn, int flags) {
+    public boolean bindService(Intent service, ServiceConnection conn, int flags) {
         return false;
     }
 
     @Override
-    public void unbindService(@NonNull ServiceConnection conn) {
+    public void unbindService(ServiceConnection conn) {
 
     }
 
     @Override
-    public boolean startInstrumentation(@NonNull ComponentName className, @Nullable String profileFile, @Nullable Bundle arguments) {
+    public boolean startInstrumentation(ComponentName className, String profileFile, Bundle arguments) {
         return false;
     }
 
     @Override
-    public Object getSystemService(@NonNull String name) {
-        return null;
-    }
-
-    @Nullable
-    @Override
-    public String getSystemServiceName(@NonNull Class<?> serviceClass) {
+    public Object getSystemService(String name) {
         return null;
     }
 
     @Override
-    public int checkPermission(@NonNull String permission, int pid, int uid) {
+    public String getSystemServiceName(Class<?> serviceClass) {
+        return null;
+    }
+
+    @Override
+    public int checkPermission(String permission, int pid, int uid) {
         return 0;
     }
 
     @Override
-    public int checkCallingPermission(@NonNull String permission) {
+    public int checkCallingPermission(String permission) {
         return 0;
     }
 
     @Override
-    public int checkCallingOrSelfPermission(@NonNull String permission) {
+    public int checkCallingOrSelfPermission(String permission) {
         return 0;
     }
 
     @Override
-    public int checkSelfPermission(@NonNull String permission) {
+    public int checkSelfPermission(String permission) {
         return 0;
     }
 
     @Override
-    public void enforcePermission(@NonNull String permission, int pid, int uid, @Nullable String message) {
+    public void enforcePermission(String permission, int pid, int uid, String message) {
 
     }
 
     @Override
-    public void enforceCallingPermission(@NonNull String permission, @Nullable String message) {
+    public void enforceCallingPermission(String permission, String message) {
 
     }
 
     @Override
-    public void enforceCallingOrSelfPermission(@NonNull String permission, @Nullable String message) {
+    public void enforceCallingOrSelfPermission(String permission, String message) {
 
     }
 
@@ -506,7 +495,7 @@ public class ContextImpl extends Context {
     }
 
     @Override
-    public int checkUriPermission(@Nullable Uri uri, @Nullable String readPermission, @Nullable String writePermission, int pid, int uid, int modeFlags) {
+    public int checkUriPermission(Uri uri, String readPermission, String writePermission, int pid, int uid, int modeFlags) {
         return 0;
     }
 
@@ -526,7 +515,7 @@ public class ContextImpl extends Context {
     }
 
     @Override
-    public void enforceUriPermission(@Nullable Uri uri, @Nullable String readPermission, @Nullable String writePermission, int pid, int uid, int modeFlags, @Nullable String message) {
+    public void enforceUriPermission(Uri uri, String readPermission, String writePermission, int pid, int uid, int modeFlags, String message) {
 
     }
 
@@ -541,12 +530,12 @@ public class ContextImpl extends Context {
     }
 
     @Override
-    public Context createConfigurationContext(@NonNull Configuration overrideConfiguration) {
+    public Context createConfigurationContext(Configuration overrideConfiguration) {
         return null;
     }
 
     @Override
-    public Context createDisplayContext(@NonNull Display display) {
+    public Context createDisplayContext(Display display) {
         return null;
     }
 

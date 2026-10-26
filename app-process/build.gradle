@@ -12,11 +12,15 @@ if (publishingFile.exists()) {
 
 android {
     namespace = "com.rosan.app_process"
-    compileSdk = TARGET_SDK
+    compileSdk = rootProject.ext.TARGET_SDK
+
+    enableKotlin = false
 
     defaultConfig {
-        minSdk = MIN_SDK
-        targetSdk = TARGET_SDK
+        minSdk = rootProject.ext.MIN_SDK
+        targetSdk = rootProject.ext.TARGET_SDK
+
+        consumerProguardFiles 'consumer-rules.pro'
     }
 
     buildFeatures {
@@ -39,7 +43,6 @@ android {
 
 dependencies {
     compileOnly project(":hidden-api")
-    compileOnly(libs.annotation)
 
     implementation(libs.commons.cli)
     implementation(libs.hiddenapibypass)
@@ -98,7 +101,7 @@ publishing {
 }
 
 signing {
-    if (publishingFile.exists()) {
+    if (publishingFile.exists() && publishingProps['signing.keyId'] != null) {
         def privateKey = publishingProps['signing.privateKey']
         if (privateKey == null) {
             privateKey = file(publishingProps['signing.secretKeyRingFile']).text
@@ -108,6 +111,6 @@ signing {
                 privateKey,
                 publishingProps['signing.password']
         )
+        sign publishing.publications
     }
-    sign publishing.publications
 }

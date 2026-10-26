@@ -11,7 +11,6 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 
-import androidx.annotation.NonNull;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -93,21 +92,19 @@ abstract class NewProcessReceiver extends BroadcastReceiver {
     abstract void onReceive(NewProcessResult result);
 
     static class NewProcessResult {
-        private final @NonNull String mToken;
+        private final String mToken;
 
-        private final @NonNull IBinder mBinder;
+        private final IBinder mBinder;
 
-        NewProcessResult(@NonNull String token, @NonNull IBinder binder) {
+        NewProcessResult(String token, IBinder binder) {
             mToken = token;
             mBinder = binder;
         }
 
-        @NonNull
         public String getToken() {
             return mToken;
         }
 
-        @NonNull
         public IBinder getBinder() {
             return mBinder;
         }

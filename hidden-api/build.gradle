@@ -4,10 +4,10 @@ plugins {
 
 android {
     namespace = "com.rosan.hidden_api"
-    compileSdk = 35
+    compileSdk = rootProject.ext.TARGET_SDK
 
     defaultConfig {
-        minSdk = 19
+        minSdk = rootProject.ext.MIN_SDK
     }
 
     buildFeatures {
@@ -20,10 +20,6 @@ android {
     }
 }
 
-dependencies {
-    compileOnly(libs.annotation)
-}
-
 tasks.withType(JavaCompile).configureEach {
-    options.compilerArgs << "-Xlint:deprecation" << "-Xlint:unchecked"
+    //options.compilerArgs << "-Xlint:deprecation" << "-Xlint:unchecked"
 }

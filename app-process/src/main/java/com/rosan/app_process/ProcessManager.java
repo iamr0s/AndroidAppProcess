@@ -9,8 +9,6 @@ import android.os.IBinder;
 import android.os.Parcel;
 import android.os.RemoteException;
 
-import androidx.annotation.Keep;
-import androidx.annotation.Nullable;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,7 +37,6 @@ public class ProcessManager extends IProcessManager.Stub {
         }
     };
 
-    @Keep
     public ProcessManager() {
         super();
     }
@@ -108,7 +105,7 @@ public class ProcessManager extends IProcessManager.Stub {
         return serviceBinder(null, null, componentName);
     }
 
-    public ParcelableBinder serviceBinder(@Nullable Context context, @Nullable ClassLoader classLoader, ComponentName componentName) {
+    public ParcelableBinder serviceBinder(Context context, ClassLoader classLoader, ComponentName componentName) {
         try {
             IBinder iBinder;
             if (context != null && classLoader != null)
@@ -131,7 +128,7 @@ public class ProcessManager extends IProcessManager.Stub {
 
 
     @Override
-    public void linkDeathTo(@Nullable ParcelableBinder pBinder) throws RemoteException {
+    public void linkDeathTo(ParcelableBinder pBinder) throws RemoteException {
         synchronized (this) {
             try {
                 if (mClientBinder != null) mClientBinder.unlinkToDeath(mClientDeadRecipient, 0);
@@ -139,6 +136,10 @@ public class ProcessManager extends IProcessManager.Stub {
             }
             if (pBinder == null || pBinder.getBinder() == null) return;
             IBinder iBinder = pBinder.getBinder();
+            if (!iBinder.isBinderAlive()) {
+                mClientDeadRecipient.binderDied();
+                return;
+            }
             iBinder.linkToDeath(mClientDeadRecipient, 0);
             mClientBinder = iBinder;
         }

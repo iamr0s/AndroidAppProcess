@@ -6,10 +6,8 @@ import android.os.IBinder;
 import android.os.IInterface;
 import android.os.RemoteException;
 
-import androidx.annotation.RequiresApi;
 
 public interface IActivityManager extends IInterface {
-    @RequiresApi(Build.VERSION_CODES.Q)
     ContentProviderHolder getContentProviderExternal(String name, int userId, IBinder token, String tag)
             throws RemoteException;
 

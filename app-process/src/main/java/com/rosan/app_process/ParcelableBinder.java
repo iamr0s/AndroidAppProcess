@@ -4,7 +4,6 @@ import android.os.IBinder;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-import androidx.annotation.NonNull;
 
 public class ParcelableBinder implements Parcelable {
     public static final Creator<ParcelableBinder> CREATOR = new Creator<ParcelableBinder>() {
@@ -39,7 +38,7 @@ public class ParcelableBinder implements Parcelable {
     }
 
     @Override
-    public void writeToParcel(@NonNull Parcel dest, int flags) {
+    public void writeToParcel(Parcel dest, int flags) {
         dest.writeStrongBinder(binder);
     }
 }

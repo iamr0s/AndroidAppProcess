@@ -8,16 +8,16 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.AssetManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.IInterface;
 import android.os.Looper;
 import android.os.Process;
+import android.util.ArraySet;
 import android.util.Log;
 
-import androidx.annotation.Keep;
-import androidx.annotation.NonNull;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
@@ -25,7 +25,9 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.lsposed.hiddenapibypass.HiddenApiBypass;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -38,7 +40,6 @@ public class NewProcess {
 
     private static ActivityThread mActivityThread = null;
 
-    @Keep
     public static void main(String[] args) throws Throwable {
         try {
             innerMain(args);
@@ -53,6 +54,7 @@ public class NewProcess {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             HiddenApiBypass.addHiddenApiExemptions("");
         }
+        preloadSystemAssets();
         Options options = new Options().addOption(Option.builder().longOpt("package").hasArg().required().type(String.class).build()).addOption(Option.builder().longOpt("token").hasArg().required().type(String.class).build()).addOption(Option.builder().longOpt("component").hasArg().required().type(String.class).build());
         CommandLine cmdLine = new DefaultParser().parse(options, args);
         String packageName = cmdLine.getOptionValue("package");
@@ -103,17 +105,74 @@ public class NewProcess {
         return Arrays.asList(packageNames);
     }
 
-    private static @NonNull ActivityThread getActivityThread() {
+    private static void preloadSystemAssets() {
+        if (Build.VERSION.SDK_INT != Build.VERSION_CODES.P) return;
+        try {
+            Class<?> apkAssetsClass = Class.forName("android.content.res.ApkAssets");
+            Object apkAssets;
+            try {
+                apkAssets = apkAssetsClass.getMethod("loadFromPath", String.class, boolean.class)
+                        .invoke(null, "/system/framework/framework-res.apk", true);
+            } catch (NoSuchMethodException e) {
+                apkAssets = apkAssetsClass.getMethod("loadFromPath", String.class, int.class)
+                        .invoke(null, "/system/framework/framework-res.apk", 1);
+            }
+
+            Object apkAssetsArray = Array.newInstance(apkAssetsClass, 1);
+            Array.set(apkAssetsArray, 0, apkAssets);
+
+            Field systemApkAssets = AssetManager.class.getDeclaredField("sSystemApkAssets");
+            systemApkAssets.setAccessible(true);
+            systemApkAssets.set(null, apkAssetsArray);
+
+            ArraySet<Object> apkAssetsSet = new ArraySet<>();
+            apkAssetsSet.add(apkAssets);
+            Field systemApkAssetsSet = AssetManager.class.getDeclaredField("sSystemApkAssetsSet");
+            systemApkAssetsSet.setAccessible(true);
+            systemApkAssetsSet.set(null, apkAssetsSet);
+
+            Constructor<AssetManager> constructor = AssetManager.class.getDeclaredConstructor(boolean.class);
+            constructor.setAccessible(true);
+            AssetManager assets = constructor.newInstance(true);
+
+            Method setApkAssets = AssetManager.class.getDeclaredMethod("setApkAssets",
+                    apkAssetsArray.getClass(), boolean.class);
+            setApkAssets.setAccessible(true);
+            setApkAssets.invoke(assets, apkAssetsArray, false);
+
+            Field sSystem = AssetManager.class.getDeclaredField("sSystem");
+            sSystem.setAccessible(true);
+            sSystem.set(null, assets);
+            Log.i(TAG, "preloadSystemAssets ok");
+        } catch (Throwable t) {
+            Log.e(TAG, "preloadSystemAssets failed", t);
+        }
+    }
+
+    private static ActivityThread getActivityThread() {
         if (mActivityThread != null) return mActivityThread;
         if (Looper.getMainLooper() == null) Looper.prepareMainLooper();
         if (Looper.myLooper() == null) Looper.prepare();
 
-        mActivityThread = ActivityThread.systemMain();
+        try {
+            Constructor<ActivityThread> constructor = ActivityThread.class.getDeclaredConstructor();
+            constructor.setAccessible(true);
+            ActivityThread thread = constructor.newInstance();
+
+            Method attach = ActivityThread.class.getDeclaredMethod("attach", boolean.class, long.class);
+            attach.setAccessible(true);
+            attach.invoke(thread, true, 0L);
+
+            mActivityThread = thread;
+        } catch (Throwable ignored) {
+            mActivityThread = ActivityThread.systemMain();
+        }
+
         Objects.requireNonNull(mActivityThread);
-        return getActivityThread();
+        return mActivityThread;
     }
 
-    private static @NonNull Context getSystemContext() {
+    private static Context getSystemContext() {
         return getActivityThread().getSystemContext();
     }
 

@@ -3,14 +3,13 @@ package com.rosan.app_process;
 import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
 
-import androidx.annotation.NonNull;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
 public class RemoteProcessImpl extends IRemoteProcess.Stub {
-    private final @NonNull Process mProcess;
+    private final Process mProcess;
 
     private ParcelFileDescriptor mInputStream;
 
@@ -18,7 +17,7 @@ public class RemoteProcessImpl extends IRemoteProcess.Stub {
 
     private ParcelFileDescriptor mErrorStream;
 
-    public RemoteProcessImpl(@NonNull Process process) {
+    public RemoteProcessImpl(Process process) {
         mProcess = process;
     }
 

@@ -8,9 +8,6 @@ import android.os.IBinder;
 import android.os.Parcel;
 import android.os.RemoteException;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
@@ -18,6 +15,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -26,11 +24,11 @@ import java.util.concurrent.Callable;
 public abstract class AppProcess implements Closeable {
     protected Context mContext = null;
 
-    protected IProcessManager mManager = null;
+    protected volatile IProcessManager mManager = null;
 
-    protected final Map<String, IBinder> mChildProcess = new HashMap<>();
+    protected final Map<String, IBinder> mChildProcess = new ConcurrentHashMap<>();
 
-    public static ProcessParams generateProcessParams(@NonNull String classPath, @NonNull String entryClassName, @NonNull List<String> args) {
+    public static ProcessParams generateProcessParams(String classPath, String entryClassName, List<String> args) {
         List<String> cmdList = new ArrayList<>();
         cmdList.add("/system/bin/app_process");
         cmdList.add("-Djava.class.path=" + classPath);
@@ -57,7 +55,8 @@ public abstract class AppProcess implements Closeable {
         IBinder managerBinder = manager.asBinder();
         Parcel processData = Parcel.obtain();
         try {
-            processData.writeInterfaceToken(Objects.requireNonNull(managerBinder.getInterfaceDescriptor()));
+            String descriptor = managerBinder.getInterfaceDescriptor();
+            processData.writeInterfaceToken(descriptor != null ? descriptor : "");
             processData.writeStrongBinder(binder);
             processData.writeInt(code);
             processData.writeInt(flags);
@@ -75,7 +74,7 @@ public abstract class AppProcess implements Closeable {
         linkDeathTo(serviceManager, clientManager.asBinder());
     }
 
-    public static void linkDeathTo(IProcessManager serviceManager, @Nullable IBinder binder) {
+    public static void linkDeathTo(IProcessManager serviceManager, IBinder binder) {
         try {
             ParcelableBinder pBinder = binder == null ? null : new ParcelableBinder(binder);
             serviceManager.linkDeathTo(pBinder);
@@ -84,19 +83,19 @@ public abstract class AppProcess implements Closeable {
         }
     }
 
-    public @NonNull Process start(@NonNull String classPath, @NonNull String entryClassName, @NonNull List<String> args) throws IOException {
+    public Process start(String classPath, String entryClassName, List<String> args) throws IOException {
         return startProcess(generateProcessParams(classPath, entryClassName, args));
     }
 
-    public @NonNull Process start(@NonNull String classPath, @NonNull String entryClassName, @NonNull String[] args) throws IOException {
+    public Process start(String classPath, String entryClassName, String[] args) throws IOException {
         return start(classPath, entryClassName, Arrays.asList(args));
     }
 
-    public <T> @NonNull Process start(@NonNull String classPath, @NonNull Class<T> entryClass, @NonNull List<String> args) throws IOException {
+    public <T> Process start(String classPath, Class<T> entryClass, List<String> args) throws IOException {
         return start(classPath, entryClass.getName(), args);
     }
 
-    public <T> @NonNull Process start(@NonNull String classPath, @NonNull Class<T> entryClass, @NonNull String[] args) throws IOException {
+    public <T> Process start(String classPath, Class<T> entryClass, String[] args) throws IOException {
         return start(classPath, entryClass, Arrays.asList(args));
     }
 
@@ -104,7 +103,7 @@ public abstract class AppProcess implements Closeable {
         return init(ActivityThread.currentActivityThread().getApplication());
     }
 
-    public synchronized boolean init(@NonNull Context context) {
+    public synchronized boolean init(Context context) {
         if (initialized()) return true;
         mContext = context;
 
@@ -112,10 +111,11 @@ public abstract class AppProcess implements Closeable {
         if (manager == null) return false;
         mManager = manager;
 
+        IBinder managerBinder = manager.asBinder();
         try {
-            manager.asBinder().linkToDeath(() -> {
-                if (manager.asBinder() != mManager.asBinder()) return;
-                mManager = null;
+            managerBinder.linkToDeath(() -> {
+                IProcessManager current = mManager;
+                if (current != null && current.asBinder() == managerBinder) mManager = null;
             }, 0);
         } catch (RemoteException e) {
             e.printStackTrace();
@@ -126,7 +126,7 @@ public abstract class AppProcess implements Closeable {
     /*
      * 启动一个新的Process，并返回一个Android的IBinder，方便进行远程进程管理
      * */
-    protected @Nullable IProcessManager newManager() {
+    protected IProcessManager newManager() {
         IBinder binder = isolatedServiceBinder(new ComponentName(mContext.getPackageName(), ProcessManager.class.getName()));
         if (binder == null) return null;
 
@@ -142,9 +142,10 @@ public abstract class AppProcess implements Closeable {
     @Override
     public void close() {
         mContext = null;
-        if (mManager == null || !mManager.asBinder().pingBinder()) return;
+        IProcessManager manager = mManager;
+        if (manager == null || !manager.asBinder().isBinderAlive()) return;
         try {
-            mManager.exit(0);
+            manager.exit(0);
         } catch (RuntimeException rethrown) {
             throw rethrown;
         } catch (Exception ignored) {
@@ -156,7 +157,7 @@ public abstract class AppProcess implements Closeable {
     /*
      * 根据传来的进程参数启动一个Process
      * */
-    protected @NonNull Process newProcess(@NonNull ProcessParams params) throws IOException {
+    protected Process newProcess(ProcessParams params) throws IOException {
         List<String> cmdList = params.getCmdList();
         Map<String, String> env = params.getEnv();
         String directory = params.getDirectory();
@@ -166,12 +167,12 @@ public abstract class AppProcess implements Closeable {
         return builder.start();
     }
 
-    private @NonNull Process startProcess(@NonNull ProcessParams params) throws IOException {
+    private Process startProcess(ProcessParams params) throws IOException {
         if (!initialized()) return newProcess(params);
         return remoteProcess(params.getCmdList(), params.getEnv(), params.getDirectory());
     }
 
-    private @NonNull IProcessManager requireManager() {
+    private IProcessManager requireManager() {
         if (!initialized()) throw new IllegalStateException("please call init() first.");
         return mManager;
     }
@@ -184,7 +185,7 @@ public abstract class AppProcess implements Closeable {
         return binderWrapper(requireManager(), binder);
     }
 
-    public Process remoteProcess(@NonNull List<String> cmdList, @Nullable Map<String, String> env, @Nullable String directory) {
+    public Process remoteProcess(List<String> cmdList, Map<String, String> env, String directory) {
         try {
             return new RemoteProcess(requireManager().remoteProcess(cmdList, env, directory));
         } catch (RemoteException e) {
@@ -205,31 +206,37 @@ public abstract class AppProcess implements Closeable {
         linkDeathTo(clientManager.asBinder());
     }
 
-    public void linkDeathTo(@Nullable IBinder binder) {
+    public void linkDeathTo(IBinder binder) {
         linkDeathTo(requireManager(), binder);
     }
 
-    private final Map<String, Object> locks = new HashMap<>();
+    private final Map<String, Object> locks = new ConcurrentHashMap<>();
 
-    private synchronized Object buildLock(String token) {
-        Object lock = locks.get(token);
-        if (lock == null) lock = new Object();
-        locks.put(token, lock);
-        return lock;
+    private Object buildLock(String token) {
+        return locks.computeIfAbsent(token, key -> new Object());
     }
 
-    public IBinder isolatedServiceBinder(@NonNull ComponentName componentName, boolean useCache) {
-        if (!useCache) isolatedServiceBinderUnchecked(componentName);
+    public IBinder isolatedServiceBinder(ComponentName componentName, boolean useCache) {
+        if (!useCache) {
+            String token = componentName.flattenToString();
+            synchronized (buildLock(token)) {
+                mChildProcess.remove(token);
+            }
+        }
         return isolatedServiceBinder(componentName);
     }
 
-    public IBinder isolatedServiceBinder(@NonNull ComponentName componentName) {
+    public IBinder isolatedServiceBinder(ComponentName componentName) {
         String token = componentName.flattenToString();
         synchronized (buildLock(token)) {
             IBinder existsBinder = mChildProcess.get(token);
-            if (existsBinder != null) return existsBinder;
-            final IBinder binder = isolatedServiceBinderUnchecked(componentName);
-            if (binder == null) return null;
+            if (existsBinder != null && existsBinder.isBinderAlive()) return existsBinder;
+            mChildProcess.remove(token);
+
+            IBinder started = isolatedServiceBinderUnchecked(componentName);
+            if (started == null) started = isolatedServiceBinderUnchecked(componentName);
+            if (started == null) return null;
+            final IBinder binder = started;
             mChildProcess.put(token, binder);
             try {
                 binder.linkToDeath(() -> {
@@ -244,7 +251,7 @@ public abstract class AppProcess implements Closeable {
         }
     }
 
-    private IBinder isolatedServiceBinderUnchecked(@NonNull ComponentName componentName) {
+    private IBinder isolatedServiceBinderUnchecked(ComponentName componentName) {
         return NewProcessReceiver.start(mContext, this, componentName);
     }
 
@@ -255,7 +262,6 @@ public abstract class AppProcess implements Closeable {
      * 不在新进程启动，而是直接在当前进程中进行
      * */
     public static class None extends AppProcess {
-        @Nullable
         @Override
         protected IProcessManager newManager() {
             return new ProcessManager();
@@ -268,11 +274,10 @@ public abstract class AppProcess implements Closeable {
     }
 
     public abstract static class Terminal extends Default {
-        protected abstract @NonNull List<String> newTerminal();
+        protected abstract List<String> newTerminal();
 
-        @NonNull
         @Override
-        protected Process newProcess(@NonNull ProcessParams params) throws IOException {
+        protected Process newProcess(ProcessParams params) throws IOException {
             ProcessParams newParams = new ProcessParams(params).setCmdList(newTerminal());
             Process process = super.newProcess(newParams);
             PrintWriter printWriter = new PrintWriter(process.getOutputStream(), true);
@@ -290,7 +295,6 @@ public abstract class AppProcess implements Closeable {
 
     public static class Root extends Terminal {
 
-        @NonNull
         @Override
         protected List<String> newTerminal() {
             List<String> terminal = new ArrayList<>();
@@ -300,7 +304,6 @@ public abstract class AppProcess implements Closeable {
     }
 
     public static class RootSystem extends Terminal {
-        @NonNull
         @Override
         protected List<String> newTerminal() {
             List<String> terminal = new ArrayList<>();
@@ -311,51 +314,48 @@ public abstract class AppProcess implements Closeable {
     }
 
     public static class ProcessParams {
-        private @NonNull List<String> mCmdList;
+        private List<String> mCmdList;
 
-        private @Nullable Map<String, String> mEnv;
+        private Map<String, String> mEnv;
 
-        private @Nullable String mDirectory;
+        private String mDirectory;
 
-        public ProcessParams(@NonNull List<String> cmdList, @Nullable Map<String, String> env, @Nullable String directory) {
+        public ProcessParams(List<String> cmdList, Map<String, String> env, String directory) {
             this.mCmdList = cmdList;
             this.mEnv = env;
             this.mDirectory = directory;
         }
 
-        public ProcessParams(@NonNull ProcessParams params) {
+        public ProcessParams(ProcessParams params) {
             this.mCmdList = new ArrayList<>(params.getCmdList());
             Map<String, String> env = params.getEnv();
             this.mEnv = env != null ? new HashMap<>(env) : null;
             this.mDirectory = params.getDirectory();
         }
 
-        @NonNull
         public List<String> getCmdList() {
             return mCmdList;
         }
 
-        @Nullable
         public Map<String, String> getEnv() {
             return mEnv;
         }
 
-        @Nullable
         public String getDirectory() {
             return mDirectory;
         }
 
-        public ProcessParams setCmdList(@NonNull List<String> mCmdList) {
+        public ProcessParams setCmdList(List<String> mCmdList) {
             this.mCmdList = mCmdList;
             return this;
         }
 
-        public ProcessParams setEnv(@Nullable Map<String, String> mEnv) {
+        public ProcessParams setEnv(Map<String, String> mEnv) {
             this.mEnv = mEnv;
             return this;
         }
 
-        public ProcessParams setDirectory(@Nullable String mDirectory) {
+        public ProcessParams setDirectory(String mDirectory) {
             this.mDirectory = mDirectory;
             return this;
         }
