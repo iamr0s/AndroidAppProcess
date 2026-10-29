@@ -14,6 +14,8 @@ updates:
       maven-dependencies:
         patterns:
           - "*"
+    ignore:
+      - dependency-name: "org.lsposed.hiddenapibypass:hiddenapibypass"
 
 registries:
   maven-google:
