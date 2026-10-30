@@ -2,6 +2,10 @@ name: Build
 
 on:
   push:
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'
     paths-ignore:
       - 'docs/**'
   pull_request:
@@ -28,18 +32,18 @@ jobs:
       - name: Set environment
         run: |
           {
-            echo "repo=$(echo ${GITHUB_REPOSITORY#$GITHUB_REPOSITORY_OWNER/})"
+            echo "name=$(grep ARTIFACT_ID build.gradle| awk -F\" '{print $2}')"
             echo "version=v$(grep ARTIFACT_VERSION build.gradle| awk -F\" '{print $2}')"
             echo "commit=$(echo ${{ github.sha }} | cut -c-7)"
           } >> $GITHUB_ENV
 
       - name: Build
         run: |
-          ./gradlew --no-daemon --warning-mode=all assembleDebug
-          cp app-process/build/outputs/aar/app-process-debug.aar "${{ env.repo }}-${{ env.version }}@${{ env.commit }}.aar"
+          ./gradlew --warning-mode=all assembleDebug
+          cp app-process/build/outputs/aar/app-process-debug.aar "${{ env.name }}-${{ env.version }}@${{ env.commit }}.aar"
 
       - name: Upload
         uses: actions/upload-artifact@v7
         with:
           archive: false
-          path: "${{ env.repo }}-${{ env.version }}@${{ env.commit }}.aar"
+          path: "${{ env.name }}-${{ env.version }}@${{ env.commit }}.aar"

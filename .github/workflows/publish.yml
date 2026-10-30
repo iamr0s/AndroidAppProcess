@@ -1,0 +1,61 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check token status
+        run: curl -sS --fail-with-body -u "${{ secrets.MAVEN_REPO_TOKEN }}" https://central.sonatype.com/api/v1/publisher/deployments -o /dev/null
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: 'temurin'
+          java-version: 25
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Set environment
+        run: |
+          name="$(grep ARTIFACT_ID build.gradle| awk -F\" '{print $2}')"
+          version="v$(grep ARTIFACT_VERSION build.gradle| awk -F\" '{print $2}')"
+          {
+            echo "name=$name"
+            echo "version=$version"
+            echo "artifact=$name-$version"
+          } >> $GITHUB_ENV
+
+      - name: Set signing config
+        run: |
+          printf '%s' '${{ secrets.GPG_KEY_FILE }}' > keystore/private.asc
+          {
+            echo "signing.secretKeyRingFile=$GITHUB_WORKSPACE/keystore/private.asc"
+            echo "signing.password=${{ secrets.GPG_KEY_PASS }}"
+          } > keystore/signing.properties
+
+      - name: Build
+        run: ./gradlew publishMavenReleasePublicationToMavenRepository
+
+      - name: Publish
+        working-directory: build/staging
+        run: |
+          zip -r ${{ env.artifact }}.zip .
+          curl -sS --fail-with-body -u "${{ secrets.MAVEN_REPO_TOKEN }}" -F "bundle=@${{ env.artifact }}.zip" "https://central.sonatype.com/api/v1/publisher/upload?name=${{ env.artifact }}&publishingType=AUTOMATIC"
+
+      - name: Upload
+        uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          path: build/staging/${{ env.artifact }}.zip
