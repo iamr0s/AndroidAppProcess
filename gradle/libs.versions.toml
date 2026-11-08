@@ -8,7 +8,7 @@
 # https://mvnrepository.com/
 
 [versions]
-agp = "9.5.0"
+agp = "9.5.1"
 
 [plugins]
 agp-lib = { id = "com.android.library", version.ref = "agp" }
