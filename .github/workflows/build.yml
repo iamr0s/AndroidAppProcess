@@ -38,7 +38,7 @@ jobs:
             echo "name=$name"
             echo "version=$version"
             echo "commit=$commit"
-            echo "artifact=${name}_${version}@${commit}"
+            echo "artifact=${name}-${version}@${commit}"
           } >> $GITHUB_ENV
 
       - name: Build
