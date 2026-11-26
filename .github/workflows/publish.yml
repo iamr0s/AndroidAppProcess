@@ -30,11 +30,11 @@ jobs:
       - name: Set environment
         run: |
           name="$(grep ARTIFACT_ID build.gradle| awk -F\" '{print $2}')"
-          version="v$(grep ARTIFACT_VERSION build.gradle| awk -F\" '{print $2}')"
+          version="$(grep ARTIFACT_VERSION build.gradle| awk -F\" '{print $2}')"
           {
             echo "name=$name"
             echo "version=$version"
-            echo "artifact=$name-$version"
+            echo "artifact=${name}_${version}"
           } >> $GITHUB_ENV
 
       - name: Set signing config
