@@ -2,7 +2,7 @@ ext {
     MIN_SDK = 19
     TARGET_SDK = 36
 
-    ARTIFACT_VERSION = "1.5.0"
+    ARTIFACT_VERSION = "1.5.1"
 
     GROUP_ID = "io.github.iamr0s"
     ARTIFACT_ID = "AndroidAppProcess"
