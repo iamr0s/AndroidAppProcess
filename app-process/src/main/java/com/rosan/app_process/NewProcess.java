@@ -3,6 +3,7 @@ package com.rosan.app_process;
 import android.annotation.SuppressLint;
 import android.app.ActivityThread;
 import android.app.LoadedApk;
+import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.ContextWrapper;
@@ -17,7 +18,6 @@ import android.os.Looper;
 import android.os.Process;
 import android.util.ArraySet;
 import android.util.Log;
-
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
@@ -69,8 +69,22 @@ public class NewProcess {
         Intent intent = new Intent(NewProcessReceiver.ACTION_SEND_NEW_PROCESS)
                 .setPackage(packageName)
                 .putExtras(bundle);
-        getSystemContext().sendBroadcast(intent);
+        sendNewProcess(token, intent);
         Looper.loop();
+    }
+
+    private static void sendNewProcess(String token, Intent intent) throws Throwable {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+            try {
+                int requestCode = token.hashCode();
+                PendingIntent pendingIntent = PendingIntent.getBroadcast(getUIDContext(), requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                pendingIntent.send();
+                return;
+            } catch (Throwable e) {
+                Log.w(TAG, "pending intent broadcast failed", e);
+            }
+        }
+        getSystemContext().sendBroadcast(intent);
     }
 
     public static IBinder createBinder(ComponentName componentName) throws PackageManager.NameNotFoundException, NoSuchFieldException, InvocationTargetException, NoSuchMethodException, IllegalAccessException, ClassNotFoundException {
@@ -161,9 +175,17 @@ public class NewProcess {
             constructor.setAccessible(true);
             ActivityThread thread = constructor.newInstance();
 
-            Method attach = ActivityThread.class.getDeclaredMethod("attach", boolean.class, long.class);
+            Method attach;
+            Object[] attachArgs;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                attach = ActivityThread.class.getDeclaredMethod("attach", boolean.class, long.class);
+                attachArgs = new Object[]{true, 0L};
+            } else {
+                attach = ActivityThread.class.getDeclaredMethod("attach", boolean.class);
+                attachArgs = new Object[]{true};
+            }
             attach.setAccessible(true);
-            attach.invoke(thread, true, 0L);
+            attach.invoke(thread, attachArgs);
 
             mActivityThread = thread;
         } catch (Throwable ignored) {

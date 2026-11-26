@@ -66,9 +66,9 @@ public class ProcessManager extends IProcessManager.Stub {
                         reply.recycle();
                     }
                 }
-                System.exit(code);
             }
         }
+        System.exit(code);
     }
 
     private boolean targetTransact(IBinder binder, int code, Parcel data, Parcel reply, int flags) throws
